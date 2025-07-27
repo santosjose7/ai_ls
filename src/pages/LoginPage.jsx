@@ -7,7 +7,7 @@ import '../styles/LoginRegister.css';
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-
+  const API_BASE = 'https://ai-ls-back.onrender.com'
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -42,7 +42,7 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-  const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+  const endpoint = isRegister ? '${API_BASE}/api/auth/register' : '${API_BASE}/api/auth/login';
 
   try {
     const res = await axios.post(endpoint, formData);
