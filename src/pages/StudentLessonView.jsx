@@ -51,7 +51,7 @@ const StudentLessonView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { token, user, logout } = useAuth();
-  const BASE_URL = 'http://localhost:5000/';
+  const API_BASE = 'https://ai-ls-back.onrender.com';
   
   const [lesson, setLesson] = useState(null);
   const [activeTab, setActiveTab] = useState('content');
@@ -170,14 +170,14 @@ const StudentLessonView = () => {
 
   const fetchLesson = async () => {
     try {
-      const res = await axios.get(`/api/lessons/${id}`, {
+      const res = await axios.get(`${API_BASE}/api/lessons/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLesson(res.data);
       
       // Fetch lesson stats
       try {
-        const statsRes = await axios.get(`/api/lessons/${id}/stats`, {
+        const statsRes = await axios.get(`${API_BASE}/api/lessons/${id}/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStats(statsRes.data);
@@ -192,7 +192,7 @@ const StudentLessonView = () => {
 
   const fetchLessonProgress = async () => {
     try {
-      const res = await axios.get(`/api/lessons/${id}/progress`, {
+      const res = await axios.get(`${API_BASE}/api/lessons/${id}/progress`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsCompleted(res.data.completed);
@@ -205,7 +205,7 @@ const StudentLessonView = () => {
 
   const fetchUserNotes = async () => {
     try {
-      const res = await axios.get(`/api/lessons/${id}/notes`, {
+      const res = await axios.get(`${API_BASE}/api/lessons/${id}/notes`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotes(res.data.notes || '');
@@ -216,7 +216,7 @@ const StudentLessonView = () => {
 
   const fetchQuizData = async () => {
     try {
-      const res = await axios.get(`/api/lessons/${id}/quiz`, {
+      const res = await axios.get(`${API_BASE}/api/lessons/${id}/quiz`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setQuizData(res.data);
@@ -227,7 +227,7 @@ const StudentLessonView = () => {
 
   const fetchLessonNavigation = async () => {
     try {
-      const res = await axios.get(`/api/lessons/${id}/navigation`, {
+      const res = await axios.get(`${API_BASE}/api/lessons/${id}/navigation`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLessonNavigation(res.data);
@@ -239,7 +239,7 @@ const StudentLessonView = () => {
 
   const markAsCompleted = async () => {
     try {
-      await axios.post(`/api/lessons/${id}/complete`, {}, {
+      await axios.post(`${API_BASE}/api/lessons/${id}/complete`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsCompleted(true);
@@ -250,7 +250,7 @@ const StudentLessonView = () => {
 
   const toggleBookmark = async () => {
     try {
-      const res = await axios.post(`/api/lessons/${id}/bookmark`, {}, {
+      const res = await axios.post(`${API_BASE}/api/lessons/${id}/bookmark`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setIsBookmarked(res.data.bookmarked);
@@ -289,7 +289,7 @@ const StudentLessonView = () => {
 
   const submitRating = async (newRating) => {
     try {
-      await axios.post(`/api/lessons/${id}/rate`, { rating: newRating }, {
+      await axios.post(`${API_BASE}/api/lessons/${id}/rate`, { rating: newRating }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserRating(newRating);
@@ -300,7 +300,7 @@ const StudentLessonView = () => {
 
   const saveNotes = async () => {
     try {
-      await axios.post(`/api/lessons/${id}/notes`, { notes }, {
+      await axios.post(`${API_BASE}/api/lessons/${id}/notes`, { notes }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert('Notes saved successfully!');
@@ -322,7 +322,7 @@ const StudentLessonView = () => {
     setIsAiInterrupted(false);
     
     try {
-      const response = await axios.post('/api/ai/teach-lesson', {
+      const response = await axios.post(`${API_BASE}/api/ai/teach-lesson`, {
         lessonId: id,
         lessonContent: lesson?.content,
         lessonTitle: lesson?.title
@@ -377,7 +377,7 @@ const StudentLessonView = () => {
     setShowInterruptDialog(false);
     
     try {
-      const response = await axios.post('/api/ai/interrupt-teaching', {
+      const response = await axios.post(`${API_BASE}/api/ai/interrupt-teaching`, {
         lessonId: id,
         query: aiInterruptQuery,
         teachingContext: aiTeachingText,
@@ -477,7 +477,7 @@ const StudentLessonView = () => {
     setIsGeneratingQuiz(true);
     
     try {
-      const response = await axios.post('/api/ai/generate-quiz', {
+      const response = await axios.post(`${API_BASE}/api/ai/generate-quiz`, {
         lessonId: id,
         lessonContent: lesson?.content,
         lessonTitle: lesson?.title,
@@ -510,7 +510,7 @@ const StudentLessonView = () => {
     
     setIsLoadingAi(true);
     try {
-      const response = await axios.post('/api/ai/teach', {
+      const response = await axios.post(`/api/ai/teach`, {
         lessonId: id,
         query: aiQuery,
         lessonContext: lesson?.content,
@@ -566,7 +566,7 @@ const StudentLessonView = () => {
 
     try {
       const response = await axios.post(
-        'https://your-backend.onrender.com/api/tts',
+        `${API_BASE}/api/tts`,
         { text },
         {
           headers: {
@@ -610,7 +610,7 @@ const StudentLessonView = () => {
 
   const submitQuiz = async () => {
     try {
-      const response = await axios.post(`/api/lessons/${id}/quiz/submit`, {
+      const response = await axios.post(`${API_BASE}/api/lessons/${id}/quiz/submit`, {
         multipleChoiceAnswers: selectedAnswers,
         freeFormAnswers: freeFormAnswers,
         quizData: quizData
