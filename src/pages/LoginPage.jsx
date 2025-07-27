@@ -4,7 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import '../styles/LoginRegister.css';
 
+
+
 const LoginPage = () => {
+  const API_BASE = import.meta.env.VITE_API_URL;
   const { login } = useAuth();
   const navigate = useNavigate();
   const API_BASE = 'https://ai-ls-back.onrender.com'
@@ -42,7 +45,7 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-  const endpoint = isRegister ? '${API_BASE}/api/auth/register' : '${API_BASE}/api/auth/login';
+  const endpoint = isRegister ? `${API_BASE}/api/auth/register` : `${API_BASE}/api/auth/login`;
 
   try {
     const res = await axios.post(endpoint, formData);
