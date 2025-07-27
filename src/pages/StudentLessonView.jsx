@@ -561,37 +561,37 @@ const StudentLessonView = () => {
   };
 
   // Voice Output Functions
-  const speakText = (text) => {
-    window.speechSynthesis.cancel();
-    
+  const speakText = async (text) => {
     if (!text) return;
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(voice => 
-      voice.name.includes('Google') || 
-      voice.name.includes('Microsoft') ||
-      voice.lang.startsWith('en')
-    );
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+
+    try {
+      const response = await axios.post(
+        'https://your-backend.onrender.com/api/tts',
+        { text },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: 'blob', // get audio as binary
+        }
+      );
+
+      const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onplay = () => setIsSpeaking(true);
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+
+      audio.play();
+    } catch (error) {
+      console.error('Error playing ElevenLabs TTS audio:', error);
+      setIsSpeaking(false);
     }
-    
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    
-    window.speechSynthesis.speak(utterance);
   };
 
-  const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-  };
 
   // Quiz Functions
   const handleAnswerSelect = (questionIndex, answerIndex) => {
