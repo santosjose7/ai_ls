@@ -10,7 +10,6 @@ const LoginPage = () => {
   const API_BASE = import.meta.env.VITE_API_URL;
   const { login } = useAuth();
   const navigate = useNavigate();
-  const API_BASE = 'https://ai-ls-back.onrender.com'
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
