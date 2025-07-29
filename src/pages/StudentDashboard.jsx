@@ -40,53 +40,74 @@ const StudentDashboard = () => {
     }
   }, [user]);
 
-  const fetchEnrolledCourses = async () => {
-  // FAKE COURSES FOR DEMO PURPOSES
   const fakeCourses = [
-    {
-      id: 'course1',
-      title: 'Introduction to Mathematics',
-      description: 'Learn the basics of algebra, geometry, and arithmetic in this foundational math course.',
-      progress: 75,
-      grade: 88,
-      dueAssignments: 1,
-      completedLessons: 6,
-      totalLessons: 8,
-      lastAccessed: '2 days ago',
-      nextLesson: 'Algebra Basics',
-      nextLessonId: 'lesson101',
-    },
-    {
-      id: 'course2',
-      title: 'Fundamentals of Python Programming',
-      description: 'Dive into Python with hands-on coding examples, from variables to loops and functions.',
-      progress: 40,
-      grade: 72,
-      dueAssignments: 2,
-      completedLessons: 4,
-      totalLessons: 10,
-      lastAccessed: '5 days ago',
-      nextLesson: 'Loops and Iteration',
-      nextLessonId: 'lesson202',
-    },
-    {
-      id: 'course3',
-      title: 'World History: Ancient Civilizations',
-      description: 'Explore the rise and fall of ancient societies from Egypt, Rome, Mesopotamia, and more.',
-      progress: 90,
-      grade: 94,
-      dueAssignments: 0,
-      completedLessons: 9,
-      totalLessons: 10,
-      lastAccessed: 'yesterday',
-      nextLesson: 'The Roman Empire',
-      nextLessonId: 'lesson303',
-    },
-  ];
+  {
+    id: 'course1',
+    title: 'Introduction to Mathematics',
+    description: 'Learn the basics of algebra, geometry, and arithmetic.',
+    progress: 75,
+    grade: 88,
+    dueAssignments: 1,
+    completedLessons: 6,
+    totalLessons: 8,
+    lastAccessed: '2 days ago',
+    nextLesson: 'Algebra Basics',
+    nextLessonId: 'math_lesson_1',
+    lessons: [
+      {
+        id: 'math_lesson_1',
+        title: 'Algebra Basics',
+        content: 'This lesson introduces algebra and variables...',
+      },
+      {
+        id: 'math_lesson_2',
+        title: 'Geometry Introduction',
+        content: 'This lesson covers basic shapes and angles...',
+      },
+    ],
+  },
+  {
+    id: 'course2',
+    title: 'Fundamentals of Python Programming',
+    description: 'Dive into Python basics.',
+    progress: 40,
+    grade: 72,
+    dueAssignments: 2,
+    completedLessons: 4,
+    totalLessons: 10,
+    lastAccessed: '5 days ago',
+    nextLesson: 'Loops and Iteration',
+    nextLessonId: 'python_lesson_1',
+    lessons: [
+      {
+        id: 'python_lesson_1',
+        title: 'Loops and Iteration',
+        content: 'Learn how loops help repeat code blocks...',
+      },
+    ],
+  },
+  {
+    id: 'course3',
+    title: 'World History: Ancient Civilizations',
+    description: 'Explore the rise of ancient societies.',
+    progress: 90,
+    grade: 94,
+    dueAssignments: 0,
+    completedLessons: 9,
+    totalLessons: 10,
+    lastAccessed: 'yesterday',
+    nextLesson: 'The Roman Empire',
+    nextLessonId: 'history_lesson_1',
+    lessons: [
+      {
+        id: 'history_lesson_1',
+        title: 'The Roman Empire',
+        content: 'Discover how Rome became a superpower...',
+      },
+    ],
+  },
+];
 
-  // You could persist this to localStorage if needed
-  setEnrolledCourses(fakeCourses);
-};
 
   const generateAiGreeting = () => {
     if (!user?.first_name) return;
