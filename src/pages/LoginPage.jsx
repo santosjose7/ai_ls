@@ -46,18 +46,18 @@ const LoginPage = () => {
     // Hardcoded accounts
     const defaultUsers = [
       {
-        email: 'admin@example.com',
-        password: 'admin123',
+        email: 'admin@gmail.com',
+        password: 'Admin',
         role: 'admin',
         first_name: 'Admin',
         last_name: 'User',
       },
       {
-        email: 'student@example.com',
-        password: 'student123',
+        email: 'student@gmail.com',
+        password: 'Student',
         role: 'student',
-        first_name: 'Jane',
-        last_name: 'Doe',
+        first_name: 'Student',
+        last_name: 'John',
       },
     ];
 
