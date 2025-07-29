@@ -114,7 +114,18 @@ const StudentLessonView = () => {
 
   // Get course context from navigation state
   const courseContext = location.state || {};
-  
+ const { signedUrl } = await client.conversationalAi.conversations.getSignedUrl({
+  agentId: "agent_1901k19k1133fydtqzvbewhd00qm",
+    sessionId: `lesson_${lesson.id}_${user.first_name}`,
+    user: {
+      firstName: user.first_name,
+    },
+    session: {
+      lessonTitle: lesson.title,
+      lessonContent: lesson.content,
+   }
+  });
+ 
  useEffect(() => {
   const hardcodedLesson = location.state?.lessonData;
   if (hardcodedLesson) {
