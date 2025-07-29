@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import '../styles/LoginRegister.css';
 
-
-
 const LoginPage = () => {
-  const API_BASE = import.meta.env.VITE_API_URL;
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     role: 'student',
@@ -42,53 +39,83 @@ const LoginPage = () => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-  const endpoint = isRegister ? `${API_BASE}/api/auth/register` : `${API_BASE}/api/auth/login`;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
 
-  try {
-    const res = await axios.post(endpoint, formData);
+    // Hardcoded accounts
+    const defaultUsers = [
+      {
+        email: 'admin@example.com',
+        password: 'admin123',
+        role: 'admin',
+        first_name: 'Admin',
+        last_name: 'User',
+      },
+      {
+        email: 'student@example.com',
+        password: 'student123',
+        role: 'student',
+        first_name: 'Jane',
+        last_name: 'Doe',
+      },
+    ];
 
-    console.log("✅ Login success"); 
-    if (!res.data.token) {
-      console.error("❌ No token received from backend!");
-      setError("Login failed: no token received");
+    // LocalStorage users
+    const storedUsers = JSON.parse(localStorage.getItem('users')) || [];
+
+    if (isRegister) {
+      const userExists = [...defaultUsers, ...storedUsers].some(
+        u => u.email === formData.email
+      );
+      if (userExists) {
+        setError('User already exists.');
+        return;
+      }
+
+      const newUser = {
+        ...formData,
+        role: 'student',
+      };
+      localStorage.setItem('users', JSON.stringify([...storedUsers, newUser]));
+      alert('✅ Registration successful! You can now log in.');
+      setIsRegister(false);
       return;
     }
 
-    login(res.data.token, res.data.user); // This sets token to context + localStorage
+    // Try login
+    const allUsers = [...defaultUsers, ...storedUsers];
+    const user = allUsers.find(
+      u => u.email === formData.email && u.password === formData.password
+    );
 
-    if (res.data.user.role === 'admin') {
+    if (!user) {
+      setError('Invalid email or password.');
+      return;
+    }
+
+    const fakeToken = 'demo-token';
+    login(fakeToken, user);
+
+    if (user.role === 'admin') {
       navigate('/admin');
     } else {
       navigate('/student');
     }
-
-  } catch (err) {
-    console.error("❌ Login error:", err.response?.data || err.message);
-    setError('Authentication failed. Please check your credentials.');
-  }
-};
+  };
 
   return (
     <div className="auth-container">
       <div className="auth-toggle">
-        <button
-          className={!isRegister ? 'active' : ''}
-          onClick={() => setIsRegister(false)}
-        >
+        <button className={!isRegister ? 'active' : ''} onClick={() => setIsRegister(false)}>
           Log In
         </button>
-        <button
-          className={isRegister ? 'active' : ''}
-          onClick={() => setIsRegister(true)}
-        >
+        <button className={isRegister ? 'active' : ''} onClick={() => setIsRegister(true)}>
           Register
         </button>
       </div>
 
       <h2>{isRegister ? 'Create an Account' : 'Log In'}</h2>
-
       {error && <p className="auth-error">{error}</p>}
 
       <form onSubmit={handleSubmit} className="auth-form">
@@ -155,14 +182,15 @@ const LoginPage = () => {
           required
         />
 
-        <button type="submit">
-          {isRegister ? 'Register' : 'Log In'}
-        </button>
+        <button type="submit">{isRegister ? 'Register' : 'Log In'}</button>
       </form>
 
       <p>
         {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-        <button onClick={toggleForm} style={{ color: '#007bff', background: 'none', border: 'none', cursor: 'pointer' }}>
+        <button
+          onClick={toggleForm}
+          style={{ color: '#007bff', background: 'none', border: 'none', cursor: 'pointer' }}
+        >
           {isRegister ? 'Log In' : 'Register'}
         </button>
       </p>
