@@ -54,9 +54,9 @@ const LoginPage = () => {
       },
       {
         email: 'student@gmail.com',
-        password: 'Student',
+        password: '123Student',
         role: 'student',
-        first_name: '123Student',
+        first_name: 'Student',
         last_name: 'John',
       },
     ];
