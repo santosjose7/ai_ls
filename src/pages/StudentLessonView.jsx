@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
 import '../styles/LessonDetails.css';
 import { ElevenLabsClient } from "@elevenlabs/client";
-
+import { ElevenLabsProvider, VoiceAssistant } from '@elevenlabs/react';
 
 import { 
   BookOpen, 
@@ -55,9 +55,7 @@ const StudentLessonView = () => {
   const location = useLocation();
   const { token, user, logout } = useAuth();
 
-  const client = new ElevenLabsClient({
-    apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
-  });
+ 
   const [lesson, setLesson] = useState(null);
   const [activeTab, setActiveTab] = useState('content');
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -113,29 +111,7 @@ const StudentLessonView = () => {
   const progressIntervalRef = useRef(null);
 
   // Get course context from navigation state
-  useEffect(() => {
-  const fetchSignedUrl = async () => {
-    const client = new ElevenLabsClient({ apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY });
-    
-    const { signedUrl } = await client.conversationalAi.conversations.getSignedUrl({
-      agentId: "agent_1901k19k1133fydtqzvbewhd00qm",
-      sessionId: `lesson_${lesson.id}_${user.first_name}`,
-      user: { firstName: user.first_name },
-      session: {
-        lessonTitle: lesson.title,
-        lessonContent: lesson.content,
-      },
-    });
-
-    console.log("Signed URL:", signedUrl);
-    // use signedUrl in WebSocket or however you want
-  };
-
-  if (lesson?.title && user?.first_name) {
-    fetchSignedUrl();
-  }
-}, [lesson, user]);
-
+  
  
  useEffect(() => {
   const hardcodedLesson = location.state?.lessonData;
@@ -150,6 +126,18 @@ const StudentLessonView = () => {
   fetchQuizData();
   fetchLessonNavigation();
   initializeSpeechRecognition();
+
+  // Hardcoded lesson and user values
+  const lesson = {
+    id: "lesson 1",
+    title: "Introduction to Fractions",
+    content: "Fractions represent parts of a whole. For example, 1/2 means half.",
+  };
+
+  const user = {
+    first_name: "Kevin"
+  };
+
 
   return () => {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
