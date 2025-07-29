@@ -41,20 +41,52 @@ const StudentDashboard = () => {
   }, [user]);
 
   const fetchEnrolledCourses = async () => {
-    try {
-      // Replace with actual API endpoint
-      const response = await fetch('/api/student/courses', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        }
-      });
-      const data = await response.json();
-      setEnrolledCourses(data);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-    }
-  };
+  // FAKE COURSES FOR DEMO PURPOSES
+  const fakeCourses = [
+    {
+      id: 'course1',
+      title: 'Introduction to Mathematics',
+      description: 'Learn the basics of algebra, geometry, and arithmetic in this foundational math course.',
+      progress: 75,
+      grade: 88,
+      dueAssignments: 1,
+      completedLessons: 6,
+      totalLessons: 8,
+      lastAccessed: '2 days ago',
+      nextLesson: 'Algebra Basics',
+      nextLessonId: 'lesson101',
+    },
+    {
+      id: 'course2',
+      title: 'Fundamentals of Python Programming',
+      description: 'Dive into Python with hands-on coding examples, from variables to loops and functions.',
+      progress: 40,
+      grade: 72,
+      dueAssignments: 2,
+      completedLessons: 4,
+      totalLessons: 10,
+      lastAccessed: '5 days ago',
+      nextLesson: 'Loops and Iteration',
+      nextLessonId: 'lesson202',
+    },
+    {
+      id: 'course3',
+      title: 'World History: Ancient Civilizations',
+      description: 'Explore the rise and fall of ancient societies from Egypt, Rome, Mesopotamia, and more.',
+      progress: 90,
+      grade: 94,
+      dueAssignments: 0,
+      completedLessons: 9,
+      totalLessons: 10,
+      lastAccessed: 'yesterday',
+      nextLesson: 'The Roman Empire',
+      nextLessonId: 'lesson303',
+    },
+  ];
+
+  // You could persist this to localStorage if needed
+  setEnrolledCourses(fakeCourses);
+};
 
   const generateAiGreeting = () => {
     if (!user?.first_name) return;
