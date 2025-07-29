@@ -40,73 +40,78 @@ const StudentDashboard = () => {
     }
   }, [user]);
 
+  const fetchEnrolledCourses = async () => {
   const fakeCourses = [
-  {
-    id: 'course1',
-    title: 'Introduction to Mathematics',
-    description: 'Learn the basics of algebra, geometry, and arithmetic.',
-    progress: 75,
-    grade: 88,
-    dueAssignments: 1,
-    completedLessons: 6,
-    totalLessons: 8,
-    lastAccessed: '2 days ago',
-    nextLesson: 'Algebra Basics',
-    nextLessonId: 'math_lesson_1',
-    lessons: [
-      {
-        id: 'math_lesson_1',
-        title: 'Algebra Basics',
-        content: 'This lesson introduces algebra and variables...',
-      },
-      {
-        id: 'math_lesson_2',
-        title: 'Geometry Introduction',
-        content: 'This lesson covers basic shapes and angles...',
-      },
-    ],
-  },
-  {
-    id: 'course2',
-    title: 'Fundamentals of Python Programming',
-    description: 'Dive into Python basics.',
-    progress: 40,
-    grade: 72,
-    dueAssignments: 2,
-    completedLessons: 4,
-    totalLessons: 10,
-    lastAccessed: '5 days ago',
-    nextLesson: 'Loops and Iteration',
-    nextLessonId: 'python_lesson_1',
-    lessons: [
-      {
-        id: 'python_lesson_1',
-        title: 'Loops and Iteration',
-        content: 'Learn how loops help repeat code blocks...',
-      },
-    ],
-  },
-  {
-    id: 'course3',
-    title: 'World History: Ancient Civilizations',
-    description: 'Explore the rise of ancient societies.',
-    progress: 90,
-    grade: 94,
-    dueAssignments: 0,
-    completedLessons: 9,
-    totalLessons: 10,
-    lastAccessed: 'yesterday',
-    nextLesson: 'The Roman Empire',
-    nextLessonId: 'history_lesson_1',
-    lessons: [
-      {
-        id: 'history_lesson_1',
-        title: 'The Roman Empire',
-        content: 'Discover how Rome became a superpower...',
-      },
-    ],
-  },
-];
+    {
+      id: 'course1',
+      title: 'Introduction to Mathematics',
+      description: 'Learn the basics of algebra, geometry, and arithmetic.',
+      progress: 75,
+      grade: 88,
+      dueAssignments: 1,
+      completedLessons: 6,
+      totalLessons: 8,
+      lastAccessed: '2 days ago',
+      nextLesson: 'Algebra Basics',
+      nextLessonId: 'math_lesson_1',
+      lessons: [
+        {
+          id: 'math_lesson_1',
+          title: 'Algebra Basics',
+          content: 'This lesson introduces algebra and variables. Learn how to solve simple equations and understand expressions.',
+        },
+        {
+          id: 'math_lesson_2',
+          title: 'Geometry Introduction',
+          content: 'This lesson covers basic shapes, angles, and spatial reasoning.',
+        },
+      ],
+    },
+    {
+      id: 'course2',
+      title: 'Fundamentals of Python Programming',
+      description: 'Dive into Python basics with hands-on code.',
+      progress: 40,
+      grade: 72,
+      dueAssignments: 2,
+      completedLessons: 4,
+      totalLessons: 10,
+      lastAccessed: '5 days ago',
+      nextLesson: 'Loops and Iteration',
+      nextLessonId: 'python_lesson_1',
+      lessons: [
+        {
+          id: 'python_lesson_1',
+          title: 'Loops and Iteration',
+          content: 'Learn how loops help repeat code blocks and how to use for and while loops.',
+        },
+      ],
+    },
+    {
+      id: 'course3',
+      title: 'World History: Ancient Civilizations',
+      description: 'Explore ancient societies from Mesopotamia to Rome.',
+      progress: 90,
+      grade: 94,
+      dueAssignments: 0,
+      completedLessons: 9,
+      totalLessons: 10,
+      lastAccessed: 'yesterday',
+      nextLesson: 'The Roman Empire',
+      nextLessonId: 'history_lesson_1',
+      lessons: [
+        {
+          id: 'history_lesson_1',
+          title: 'The Roman Empire',
+          content: 'Discover how Rome became a dominant empire in the ancient world and its impact on modern civilization.',
+        },
+      ],
+    },
+  ];
+
+  setEnrolledCourses(fakeCourses);
+};
+
 
 
   const generateAiGreeting = () => {
