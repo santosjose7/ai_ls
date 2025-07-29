@@ -110,22 +110,26 @@ const StudentLessonView = () => {
   // Get course context from navigation state
   const courseContext = location.state || {};
   
-  useEffect(() => {
-    fetchLesson();
-    fetchLessonProgress();
-    fetchUserNotes();
-    fetchQuizData();
-    fetchLessonNavigation();
-    initializeSpeechRecognition();
-    
-    return () => {
-      // Cleanup on unmount
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-      window.speechSynthesis.cancel();
-    };
-  }, [id]);
+ useEffect(() => {
+  const hardcodedLesson = location.state?.lessonData;
+  if (hardcodedLesson) {
+    setLesson(hardcodedLesson);
+  } else {
+    fetchLesson(); // fallback to backend
+  }
+
+  fetchLessonProgress();
+  fetchUserNotes();
+  fetchQuizData();
+  fetchLessonNavigation();
+  initializeSpeechRecognition();
+
+  return () => {
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    window.speechSynthesis.cancel();
+  };
+}, [id]);
+
 
   // Initialize Speech Recognition
   const initializeSpeechRecognition = () => {
