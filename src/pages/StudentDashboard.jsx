@@ -156,14 +156,17 @@ const StudentDashboard = () => {
   };
 
   const handleContinueLesson = (course) => {
-    // Navigate to the lesson details page with the next lesson ID
-    if (course.nextLesson) {
-      navigate(`/student/lesson/${course.nextLessonId}`);
-    } else {
-      // Fallback: navigate to course overview
-     
-    }
-  };
+  const lesson = course.lessons.find(l => l.id === course.nextLessonId);
+  if (lesson) {
+    navigate(`/student/lesson/${lesson.id}`, {
+      state: {
+        fromDashboard: true,
+        courseTitle: course.title,
+        lessonData: lesson,
+      }
+    });
+  }
+};
 
   const getOverallProgress = () => {
     if (enrolledCourses.length === 0) return 0;
