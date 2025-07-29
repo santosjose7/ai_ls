@@ -3,6 +3,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
 import '../styles/LessonDetails.css';
+import { ElevenLabsClient } from "@elevenlabs/client";
+
+
 import { 
   BookOpen, 
   LogOut, 
@@ -51,8 +54,10 @@ const StudentLessonView = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { token, user, logout } = useAuth();
-  const API_BASE = 'https://ai-ls-back.onrender.com';
-  
+
+  const client = new ElevenLabsClient({
+    apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
+  });
   const [lesson, setLesson] = useState(null);
   const [activeTab, setActiveTab] = useState('content');
   const [isBookmarked, setIsBookmarked] = useState(false);
