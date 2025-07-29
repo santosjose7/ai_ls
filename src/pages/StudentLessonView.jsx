@@ -113,18 +113,29 @@ const StudentLessonView = () => {
   const progressIntervalRef = useRef(null);
 
   // Get course context from navigation state
-  const courseContext = location.state || {};
- const { signedUrl } = await client.conversationalAi.conversations.getSignedUrl({
-  agentId: "agent_1901k19k1133fydtqzvbewhd00qm",
-    sessionId: `lesson_${lesson.id}_${user.first_name}`,
-    user: {
-      firstName: user.first_name,
-    },
-    session: {
-      lessonTitle: lesson.title,
-      lessonContent: lesson.content,
-   }
-  });
+  useEffect(() => {
+  const fetchSignedUrl = async () => {
+    const client = new ElevenLabsClient({ apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY });
+    
+    const { signedUrl } = await client.conversationalAi.conversations.getSignedUrl({
+      agentId: "agent_1901k19k1133fydtqzvbewhd00qm",
+      sessionId: `lesson_${lesson.id}_${user.first_name}`,
+      user: { firstName: user.first_name },
+      session: {
+        lessonTitle: lesson.title,
+        lessonContent: lesson.content,
+      },
+    });
+
+    console.log("Signed URL:", signedUrl);
+    // use signedUrl in WebSocket or however you want
+  };
+
+  if (lesson?.title && user?.first_name) {
+    fetchSignedUrl();
+  }
+}, [lesson, user]);
+
  
  useEffect(() => {
   const hardcodedLesson = location.state?.lessonData;
