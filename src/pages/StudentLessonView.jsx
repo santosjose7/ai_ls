@@ -21,8 +21,8 @@ import {
 
 const StudentLessonView = () => {
   // --- Configuration ---
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
-  const WS_URL = API_BASE.replace(/^https?/, 'ws') + '/ai-conversation';
+  const API_BASE = import.meta.env.VITE_API_BASE;
+  const WS_URL = API_BASE.replace(/^https?/, 'wss') + '/ai-conversation';
 
   // --- State Management ---
   // Student and PDF state
