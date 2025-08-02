@@ -38,7 +38,7 @@ const StudentLessonView = () => {
 
   // Refs
   const fileInputRef = useRef(null);
-  const socketRef = useRef(null); // 👈 Ref to hold the WebSocket connection
+  const socketRef = useRef(null); 
 
   // Fetch the agent configuration on component mount
   useEffect(() => {
@@ -153,13 +153,9 @@ const StudentLessonView = () => {
     fetchAgentConfig();
     
     return () => {
-      // Clean up timeout
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-      }
       
       // Only end session if we're actually connected and not in the middle of connecting
-      if (conversation.status === 'connected' && !isConnectingRef.current) {
+      if (conversation.status === 'connected') {
         try {
           conversation.endSession();
         } catch (error) {
@@ -171,25 +167,21 @@ const StudentLessonView = () => {
     };
   }, []);
 
-  const fetchAgentConfig = async () => {
+  // Fetch the agent configuration on component mount
+  useEffect(() => {
     try {
       const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-      
-      if (defaultAgentId && validateAgentId(defaultAgentId)) {
+      if (defaultAgentId) {
         setAgentId(defaultAgentId);
-        console.log('Using default agent ID:', defaultAgentId);
-        setVoiceError(null);
       } else {
-        console.error('No valid agent ID available');
-        setAgentId(null);
         setVoiceError('Voice agent not configured');
       }
     } catch (error) {
       console.error('Error fetching agent config:', error);
-      setAgentId(null);
       setVoiceError('Voice agent not configured');
     }
-  };
+  }, 
+  []);
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -243,15 +235,13 @@ const StudentLessonView = () => {
 
   const stopVoiceAgent = async () => {
     // 1. Prevent multiple disconnect attempts from running simultaneously
-    if (isDisconnectingRef.current || (conversation.status !== 'connected' && !isSessionActive)) {
+    if ((conversation.status !== 'connected' && !isSessionActive)) {
       console.log('Disconnection already in progress or session is not active.');
       return;
     }
 
     try {
-      // 2. Set the disconnecting flag
-      isDisconnectingRef.current = true;
-      console.log("Attempting to end voice agent session...");
+      
 
       // 3. Gracefully handle the expected error
       if (conversation.status === 'connected') {
@@ -273,10 +263,6 @@ const StudentLessonView = () => {
       setAgentMessages([]);
       setIsConnecting(false);
       setVoiceError(null);
-      setConnectionAttempts(0);
-      isConnectingRef.current = false;
-      isDisconnectingRef.current = false; // Reset the disconnecting flag
-      console.log("Voice agent session cleanup complete.");
     }
   };
   const toggleVoiceAgent = async () => {
@@ -287,7 +273,7 @@ const StudentLessonView = () => {
     }
 
     // Prevent multiple simultaneous connection attempts
-    if (isConnecting || isConnectingRef.current) {
+    if (isConnecting) {
       console.log('Connection already in progress, ignoring request');
       return;
     }
@@ -310,32 +296,12 @@ const StudentLessonView = () => {
       return;
     }
 
-    if (connectionAttempts >= maxConnectionAttempts) {
-      setVoiceError('Maximum connection attempts reached. Please refresh the page.');
-      alert('Unable to connect to voice agent. Please refresh the page and try again.');
-      return;
-    }
 
     // Set connecting state
     setIsConnecting(true);
     setVoiceError(null);
-    setConnectionAttempts(prev => prev + 1);
-    isConnectingRef.current = true;
+    
 
-    // Set connection timeout
-    connectionTimeoutRef.current = setTimeout(() => {
-      if (isConnectingRef.current) {
-        setIsConnecting(false);
-        isConnectingRef.current = false;
-        setVoiceError('Connection timeout - please try again');
-        setAgentMessages(prev => [...prev, {
-          id: Date.now(),
-          type: 'error',
-          content: 'Connection timeout. Please try again.',
-          timestamp: new Date()
-        }]);
-      }
-    }, 30000);
 
     try {
       if (!pdfContent || pdfContent.trim().length === 0) {
@@ -387,8 +353,6 @@ const StudentLessonView = () => {
       console.error('Error starting voice agent:', error);
       
       setIsConnecting(false);
-      setConnectionAttempts(prev => prev - 1);
-      isConnectingRef.current = false;
       
       let errorMessage = 'Unable to start voice agent. ';
       
@@ -416,11 +380,7 @@ const StudentLessonView = () => {
     }
   };
 
-  const retryVoiceConnection = () => {
-    setConnectionAttempts(0);
-    setVoiceError(null);
-    toggleVoiceAgent();
-  };
+
 
   // Generate spectrum bars
   const generateSpectrumBars = () => {
@@ -545,12 +505,6 @@ const StudentLessonView = () => {
           <div className="voice-status-message error">
             <AlertCircle size={20} />
             <span>{voiceError}</span>
-            {connectionAttempts < maxConnectionAttempts && (
-              <button onClick={retryVoiceConnection} className="retry-button">
-                <RefreshCw size={16} />
-                Retry
-              </button>
-            )}
           </div>
         )}
 
