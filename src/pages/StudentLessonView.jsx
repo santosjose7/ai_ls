@@ -35,6 +35,7 @@ const StudentLessonView = () => {
   const [agentId, setAgentId] = useState(null);
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  
   const [voiceError, setVoiceError] = useState(null);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -44,6 +45,7 @@ const StudentLessonView = () => {
   const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const isConnectingRef = useRef(false);
+  const isDisconnectingRef = useRef(false);
 
   // Validation function for agent ID
   const validateAgentId = (agentId) => {
@@ -160,6 +162,8 @@ const StudentLessonView = () => {
           console.error('Error ending voice session on cleanup:', error);
         }
       }
+
+      stopVoiceAgent();
     };
   }, []);
 
@@ -234,11 +238,32 @@ const StudentLessonView = () => {
   };
 
   const stopVoiceAgent = async () => {
+    // 1. Prevent multiple disconnect attempts from running simultaneously
+    if (isDisconnectingRef.current || (conversation.status !== 'connected' && !isSessionActive)) {
+      console.log('Disconnection already in progress or session is not active.');
+      return;
+    }
+
     try {
+      // 2. Set the disconnecting flag
+      isDisconnectingRef.current = true;
+      console.log("Attempting to end voice agent session...");
+
+      // 3. Gracefully handle the expected error
       if (conversation.status === 'connected') {
         await conversation.endSession();
       }
-      
+
+    } catch (err) {
+      // 4. Specifically ignore the race condition error
+      if (err.message.includes('WebSocket is already in CLOSING or CLOSED state')) {
+        console.log('Session was already closing. Cleaned up state.');
+      } else {
+        // Log other, unexpected errors
+        console.error("Error stopping voice agent:", err);
+      }
+    } finally {
+      // 5. Always reset state in a finally block to ensure a clean exit
       clearTimeout(connectionTimeoutRef.current);
       setIsSessionActive(false);
       setAgentMessages([]);
@@ -246,13 +271,10 @@ const StudentLessonView = () => {
       setVoiceError(null);
       setConnectionAttempts(0);
       isConnectingRef.current = false;
-      
-      console.log("Voice agent session ended manually.");
-    } catch (err) {
-      console.error("Error stopping voice agent:", err);
+      isDisconnectingRef.current = false; // Reset the disconnecting flag
+      console.log("Voice agent session cleanup complete.");
     }
   };
-
   const toggleVoiceAgent = async () => {
     // If already connected, stop the session
     if (conversation.status === 'connected' || isSessionActive) {
