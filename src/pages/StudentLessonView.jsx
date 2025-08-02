@@ -40,24 +40,6 @@ const StudentLessonView = () => {
   const fileInputRef = useRef(null);
   const socketRef = useRef(null); 
 
-  // Fetch the agent configuration on component mount
-  useEffect(() => {
-    const fetchAgentConfig = async () => {
-      try {
-        const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-        if (defaultAgentId) {
-          setAgentId(defaultAgentId);
-        } else {
-          setVoiceError('Voice agent not configured');
-        }
-      } catch (error) {
-        console.error('Error fetching agent config:', error);
-        setVoiceError('Voice agent not configured');
-      }
-    };
-    fetchAgentConfig();
-  }, []);
-
   // Function to start the voice session
   const startVoiceSession = async () => {
     if (!studentName.trim() || !pdfContent || !agentId) {
@@ -150,7 +132,7 @@ const StudentLessonView = () => {
   };
 
   useEffect(() => {
-    fetchAgentConfig();
+
     
     return () => {
       
