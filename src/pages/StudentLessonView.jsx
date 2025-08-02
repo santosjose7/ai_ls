@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ElevenLabsClient } from 'elevenlabs'; 
 import '../styles/StudentLessonView.css';
 import {
   BookOpen,
@@ -21,132 +20,141 @@ import {
 } from 'lucide-react';
 
 const StudentLessonView = () => {
+  // --- Configuration ---
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+  const WS_URL = API_BASE.replace(/^https?/, 'ws') + '/ai-conversation';
 
+  // --- State Management ---
   // Student and PDF state
   const [studentName, setStudentName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
-  // Voice Agent State
-  const [agentId, setAgentId] = useState(null);
+  // Voice Agent and Connection State
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [voiceError, setVoiceError] = useState(null);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
 
-  // Refs
+  // --- Refs ---
   const fileInputRef = useRef(null);
-  const socketRef = useRef(null); 
+  const socketRef = useRef(null);
 
-  // Function to start the voice session
-  const startVoiceSession = async () => {
-    if (!studentName.trim() || !pdfContent || !agentId) {
+  // --- WebSocket Communication ---
+
+  // Function to start the voice session via the backend proxy
+  const startVoiceSession = () => {
+    if (!studentName.trim() || !pdfContent) {
       alert('Please enter your name and upload a PDF first.');
       return;
+    }
+    if (socketRef.current) {
+        console.log("Session already active.");
+        return;
     }
 
     setIsConnecting(true);
     setVoiceError(null);
     setAgentMessages([]);
 
-    try {
-      // 1. Initialize the ElevenLabs Client
-      const elevenlabs = new ElevenLabsClient({
-        apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
-      });
+    console.log(`Connecting to backend proxy at: ${WS_URL}`);
+    const socket = new WebSocket(WS_URL);
+    socketRef.current = socket;
 
-      // 2. Create the WebSocket connection object
-      const socket = elevenlabs.conversational.connect({
-        agentId: agentId,
-        dynamicVariables: {
-            student_name: studentName.trim(),
-            title: uploadedFile?.name || 'Lesson',
-            lesson_content: pdfContent,
-        },
-      });
+    socket.onopen = () => {
+      console.log('Backend proxy connected.');
+      setIsConnecting(false);
+      setIsSessionActive(true);
+      setAgentMessages(prev => [...prev, { id: Date.now(), type: 'system', content: 'AI tutor is ready!', timestamp: new Date() }]);
 
-      socketRef.current = socket; // Store the socket in a ref
+      // Send start message to the backend with context
+      const startPayload = {
+        type: 'start_conversation',
+        context: {
+          studentName: studentName.trim(),
+          lessonTitle: uploadedFile?.name || 'Lesson',
+          lessonContent: pdfContent,
+        }
+      };
+      socket.send(JSON.stringify(startPayload));
+    };
 
-      // 3. Set up event listeners as per the documentation
-      socket.on('open', () => {
-        console.log('Voice agent connected successfully');
-        setIsConnecting(false);
-        setIsSessionActive(true);
-        setAgentMessages(prev => [...prev, {
-            id: Date.now(), type: 'system',
-            content: 'Voice agent connected! Start speaking to interact.',
-            timestamp: new Date()
-        }]);
-      });
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Message from backend:', data);
 
-      socket.on('message', (message) => {
-        console.log('Voice agent message received:', message);
         let messageContent = '';
         let messageType = 'agent';
 
-        if (typeof message === 'string') {
-          messageContent = message;
-        } else if (message) {
-          messageContent = message.message || message.text || message.content || JSON.stringify(message);
-          messageType = message.type || message.source || 'agent';
+        // Adapt to the message structure from your ai.js backend
+        switch (data.type) {
+            case 'conversation_started':
+                messageContent = data.message;
+                messageType = 'system';
+                break;
+            case 'ai_response':
+                messageContent = data.message;
+                break;
+            case 'ai_audio_response': // If you handle audio streams
+                messageContent = "Received audio from the tutor.";
+                // Here you would handle playing the base64 audio
+                break;
+            case 'error':
+                messageContent = data.message;
+                messageType = 'error';
+                setVoiceError(data.message);
+                break;
+            default:
+                messageContent = JSON.stringify(data);
         }
+
         setAgentMessages(prev => [...prev, {
-            id: Date.now() + Math.random(), type: messageType,
-            content: messageContent, timestamp: new Date()
+            id: Date.now() + Math.random(),
+            type: messageType,
+            content: messageContent,
+            timestamp: new Date()
         }]);
-      });
 
-      socket.on('close', () => {
-        console.log('Voice agent disconnected');
-        setIsConnecting(false);
-        setIsSessionActive(false);
-        setAgentMessages(prev => [...prev, {
-            id: Date.now(), type: 'system',
-            content: 'Voice agent disconnected.', timestamp: new Date()
-        }]);
-      });
+      } catch (error) {
+        console.error('Error parsing message from backend:', error);
+      }
+    };
 
-      socket.on('error', (error) => {
-        console.error('Voice agent error:', error);
-        const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
-        setVoiceError(errorMessage);
-        setIsConnecting(false);
-        setIsSessionActive(false);
-      });
-
-    } catch (error) {
-      console.error('Error starting voice session:', error);
-      setVoiceError('Failed to initialize voice session.');
+    socket.onclose = () => {
+      console.log('Backend proxy disconnected.');
       setIsConnecting(false);
-    }
+      setIsSessionActive(false);
+      socketRef.current = null;
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setVoiceError('Connection to the tutor failed. Please try again.');
+      setIsConnecting(false);
+      setIsSessionActive(false);
+      socketRef.current = null;
+    };
   };
 
   // Function to stop the voice session
   const stopVoiceSession = () => {
     if (socketRef.current) {
-      socketRef.current.close(); // This will trigger the 'close' event listener
-      socketRef.current = null;
+      socketRef.current.close();
     }
   };
 
-
-  // Fetch the agent configuration on component mount
-  useEffect(() => {
-    try {
-      const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-      if (defaultAgentId) {
-        setAgentId(defaultAgentId);
-      } else {
-        setVoiceError('Voice agent not configured');
-      }
-    } catch (error) {
-      console.error('Error fetching agent config:', error);
-      setVoiceError('Voice agent not configured');
+  // Controller function for the main button
+  const toggleVoiceAgent = () => {
+    if (isSessionActive || isConnecting) {
+      stopVoiceSession();
+    } else {
+      startVoiceSession();
     }
-  }, 
-  []);
+  };
+
+  // --- UI and File Handling Logic ---
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
@@ -156,7 +164,6 @@ const StudentLessonView = () => {
       alert('Please upload a PDF file only.');
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
       alert('File size should be less than 10MB.');
       return;
@@ -173,7 +180,6 @@ const StudentLessonView = () => {
         method: 'POST',
         body: formData,
       });
-
       if (!response.ok) {
         throw new Error('Failed to process PDF');
       }
@@ -198,33 +204,17 @@ const StudentLessonView = () => {
     }
   };
 
-  
-  
-
-  const toggleVoiceAgent = () => {
-    if (isSessionActive || isConnecting) {
-      stopVoiceSession();
-    } else {
-      startVoiceSession();
-    }
-  };
-
-
-
-  // Generate spectrum bars
   const generateSpectrumBars = () => {
     const bars = [];
     const totalBars = 60;
-    
     for (let i = 0; i < totalBars; i++) {
       const angle = (i / totalBars) * 360;
       const hue = (i / totalBars) * 360;
-      
       bars.push(
         <div
           key={i}
           className={`spectrum-bar ${
-            isConnecting ? 'connecting' : 
+            isConnecting ? 'connecting' :
             isSessionActive ? 'listening' : ''
           }`}
           style={{
@@ -235,7 +225,6 @@ const StudentLessonView = () => {
         />
       );
     }
-    
     return bars;
   };
 
@@ -282,7 +271,6 @@ const StudentLessonView = () => {
               className="file-input-hidden"
               id="pdf-upload"
             />
-            
             {!uploadedFile ? (
               <label htmlFor="pdf-upload" className="pdf-upload-area">
                 <div className="upload-content">
@@ -304,14 +292,12 @@ const StudentLessonView = () => {
                     <X size={20} />
                   </button>
                 </div>
-                
                 {isProcessingPDF && (
                   <div className="processing-indicator">
                     <Loader className="spinning" size={20} />
                     <span>Processing PDF...</span>
                   </div>
                 )}
-                
                 {pdfContent && !isProcessingPDF && (
                   <div className="success-indicator">
                     <CheckCircle2 size={20} />
@@ -348,24 +334,20 @@ const StudentLessonView = () => {
         <div className="spectrum-container">
           <div className="spectrum-circle">
             {generateSpectrumBars()}
-            
-            {/* Center Book Icon */}
             <div className="spectrum-center">
               <BookOpen size={48} />
             </div>
-
-            {/* Voice Agent Button in Center */}
             <button
               onClick={toggleVoiceAgent}
               className={`voice-agent-center-btn ${
-                isSessionActive ? 'connected' : 
+                isSessionActive ? 'connected' :
                 voiceError ? 'error' : ''
               }`}
               title={
-                isSessionActive ? 'End voice session' : 
+                isSessionActive ? 'End voice session' :
                 voiceError ? voiceError : 'Start voice assistant'
               }
-              disabled={isConnecting || (!agentId && !voiceError) || !studentName.trim() || !pdfContent}
+              disabled={isProcessingPDF || !studentName.trim() || !pdfContent}
             >
               {isConnecting ? (
                 <RefreshCw className="spinning" size={24} />
@@ -409,33 +391,23 @@ const StudentLessonView = () => {
         {/* Bottom Navigation */}
         <div className="bottom-navigation">
           <button className="nav-item active">
-            <div className="nav-icon">
-              <Home size={20} />
-            </div>
+            <div className="nav-icon"><Home size={20} /></div>
             <span>Home</span>
           </button>
           <button className="nav-item">
-            <div className="nav-icon">
-              <GraduationCap size={20} />
-            </div>
+            <div className="nav-icon"><GraduationCap size={20} /></div>
             <span>Courses</span>
           </button>
           <button className="nav-item">
-            <div className="nav-icon">
-              <TrendingUp size={20} />
-            </div>
+            <div className="nav-icon"><TrendingUp size={20} /></div>
             <span>Progress</span>
           </button>
           <button className="nav-item">
-            <div className="nav-icon">
-              <FileText size={20} />
-            </div>
+            <div className="nav-icon"><FileText size={20} /></div>
             <span>Resources</span>
           </button>
           <button className="nav-item">
-            <div className="nav-icon">
-              <Settings size={20} />
-            </div>
+            <div className="nav-icon"><Settings size={20} /></div>
             <span>Settings</span>
           </button>
         </div>
