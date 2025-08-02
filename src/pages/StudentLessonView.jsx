@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useConversation } from '@elevenlabs/react';
+//import { useConversation } from '@elevenlabs/react';
+import '@elevenlabs/client';
 import '../styles/StudentLessonView.css';
 
 import { 
