@@ -438,8 +438,7 @@ const StudentLessonView = () => {
           key={i}
           className={`spectrum-bar ${
             isConnecting ? 'connecting' : 
-            conversation.status === 'connected' && conversation.isSpeaking ? 'speaking' : 
-            conversation.status === 'connected' ? 'listening' : ''
+            isSessionActive ? 'listening' : ''
           }`}
           style={{
             transform: `rotate(${angle}deg) translateY(-130px)`,
@@ -557,7 +556,7 @@ const StudentLessonView = () => {
           </div>
         )}
 
-        {(conversation.status === 'connected' || isSessionActive) && (
+        {isSessionActive && (
           <div className="voice-status-message connected">
             <CheckCircle2 size={16} />
             <span>Connected and ready to help {studentName}!</span>
@@ -578,18 +577,18 @@ const StudentLessonView = () => {
             <button
               onClick={toggleVoiceAgent}
               className={`voice-agent-center-btn ${
-                conversation.status === 'connected' || isSessionActive ? 'connected' : 
+                isSessionActive ? 'connected' : 
                 voiceError ? 'error' : ''
               }`}
               title={
-                conversation.status === 'connected' || isSessionActive ? 'End voice session' : 
+                isSessionActive ? 'End voice session' : 
                 voiceError ? voiceError : 'Start voice assistant'
               }
               disabled={isConnecting || (!agentId && !voiceError) || !studentName.trim() || !pdfContent}
             >
               {isConnecting ? (
                 <RefreshCw className="spinning" size={24} />
-              ) : (conversation.status === 'connected' || isSessionActive) ? (
+              ) : isSessionActive ? (
                 <BookOpen size={60} style={{ color: '#c62b2bff', fill:'#c62b2bff' }} />
               ) : voiceError ? (
                 <AlertCircle size={24} />
