@@ -1,12 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-//import { useConversation } from '@elevenlabs/react';
-import '@elevenlabs/client';
-import '../styles/StudentLessonView.css';
 
-import { 
-  Book,
-  BookOpen, 
-  ChevronLeft, 
+  // ElevenLabs Voice Agent Integration
+import React, { useEffect, useState, useRef } from 'react';
+import { ElevenLabsClient } from '@elevenlabs/client'; 
+import '../styles/StudentLessonView.css';
+import {
+  BookOpen,
+  ChevronLeft,
   Loader,
   RefreshCw,
   PhoneCall,
@@ -25,126 +24,133 @@ import {
 
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
-  
+
   // Student and PDF state
   const [studentName, setStudentName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
-  // Voice Agent State - ElevenLabs Integration
+  // Voice Agent State
   const [agentId, setAgentId] = useState(null);
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
-  
   const [voiceError, setVoiceError] = useState(null);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const maxConnectionAttempts = 3;
 
   // Refs
-  const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
-  const isConnectingRef = useRef(false);
-  const isDisconnectingRef = useRef(false);
+  const socketRef = useRef(null); // 👈 Ref to hold the WebSocket connection
 
-  // Validation function for agent ID
-  const validateAgentId = (agentId) => {
-    if (!agentId || typeof agentId !== 'string') {
-      return false;
+  // Fetch the agent configuration on component mount
+  useEffect(() => {
+    const fetchAgentConfig = async () => {
+      try {
+        const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+        if (defaultAgentId) {
+          setAgentId(defaultAgentId);
+        } else {
+          setVoiceError('Voice agent not configured');
+        }
+      } catch (error) {
+        console.error('Error fetching agent config:', error);
+        setVoiceError('Voice agent not configured');
+      }
+    };
+    fetchAgentConfig();
+  }, []);
+
+  // Function to start the voice session
+  const startVoiceSession = async () => {
+    if (!studentName.trim() || !pdfContent || !agentId) {
+      alert('Please enter your name and upload a PDF first.');
+      return;
     }
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const alphanumericRegex = /^[a-zA-Z0-9_-]+$/;
-    
-    return uuidRegex.test(agentId) || (alphanumericRegex.test(agentId) && agentId.length >= 8);
+
+    setIsConnecting(true);
+    setVoiceError(null);
+    setAgentMessages([]);
+
+    try {
+      // 1. Initialize the ElevenLabs Client
+      const elevenlabs = new ElevenLabsClient({
+        apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
+      });
+
+      // 2. Create the WebSocket connection object
+      const socket = elevenlabs.conversational.connect({
+        agentId: agentId,
+        user: {  },
+        dynamicVariables: {
+            student_name: studentName.trim(),
+            title: uploadedFile?.name || 'Lesson',
+            lesson_content: pdfContent,
+        },
+      });
+
+      socketRef.current = socket; // Store the socket in a ref
+
+      // 3. Set up event listeners as per the documentation
+      socket.on('open', () => {
+        console.log('Voice agent connected successfully');
+        setIsConnecting(false);
+        setIsSessionActive(true);
+        setAgentMessages(prev => [...prev, {
+            id: Date.now(), type: 'system',
+            content: 'Voice agent connected! Start speaking to interact.',
+            timestamp: new Date()
+        }]);
+      });
+
+      socket.on('message', (message) => {
+        console.log('Voice agent message received:', message);
+        let messageContent = '';
+        let messageType = 'agent';
+
+        if (typeof message === 'string') {
+          messageContent = message;
+        } else if (message) {
+          messageContent = message.message || message.text || message.content || JSON.stringify(message);
+          messageType = message.type || message.source || 'agent';
+        }
+        setAgentMessages(prev => [...prev, {
+            id: Date.now() + Math.random(), type: messageType,
+            content: messageContent, timestamp: new Date()
+        }]);
+      });
+
+      socket.on('close', () => {
+        console.log('Voice agent disconnected');
+        setIsConnecting(false);
+        setIsSessionActive(false);
+        setAgentMessages(prev => [...prev, {
+            id: Date.now(), type: 'system',
+            content: 'Voice agent disconnected.', timestamp: new Date()
+        }]);
+      });
+
+      socket.on('error', (error) => {
+        console.error('Voice agent error:', error);
+        const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
+        setVoiceError(errorMessage);
+        setIsConnecting(false);
+        setIsSessionActive(false);
+      });
+
+    } catch (error) {
+      console.error('Error starting voice session:', error);
+      setVoiceError('Failed to initialize voice session.');
+      setIsConnecting(false);
+    }
   };
 
-  // ElevenLabs Voice Agent Integration
-  const conversation = useConversation({
-    onConnect: () => {
-      console.log('Voice agent connected successfully');
-      setIsConnecting(false);
-      setIsSessionActive(true);
-      setVoiceError(null);
-      setConnectionAttempts(0);
-      isConnectingRef.current = false;
-      
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'system',
-        content: 'Voice agent connected! Start speaking to interact.',
-        timestamp: new Date()
-      }]);
-
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-      }
-    },
-    
-    onDisconnect: () => {
-      console.log('Voice agent disconnected');
-      setIsConnecting(false);
-      setIsSessionActive(false);
-      isConnectingRef.current = false;
-      
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'system',
-        content: 'Voice agent disconnected.',
-        timestamp: new Date()
-      }]);
-
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-      }
-    },
-    
-    onMessage: (message) => {
-      console.log('Voice agent message received:', message);
-      
-      let messageContent = '';
-      let messageType = 'agent';
-
-      if (typeof message === 'string') {
-        messageContent = message;
-      } else if (message) {
-        messageContent = message.message || message.text || message.content || JSON.stringify(message);
-        messageType = message.type || message.source || 'agent';
-      }
-
-      setAgentMessages(prev => [...prev, {
-        id: Date.now() + Math.random(),
-        type: messageType,
-        content: messageContent,
-        timestamp: new Date(),
-        isFinal: message?.isFinal !== false
-      }]);
-    },
-    
-    onError: (error) => {
-      console.error('Voice agent error:', error);
-      setIsConnecting(false);
-      setIsSessionActive(false);
-      isConnectingRef.current = false;
-      
-      const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
-      setVoiceError(errorMessage);
-      
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'error',
-        content: `Error: ${errorMessage}`,
-        timestamp: new Date()
-      }]);
-
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-      }
+  // Function to stop the voice session
+  const stopVoiceSession = () => {
+    if (socketRef.current) {
+      socketRef.current.close(); // This will trigger the 'close' event listener
+      socketRef.current = null;
     }
-  });
+  };
 
   useEffect(() => {
     fetchAgentConfig();
