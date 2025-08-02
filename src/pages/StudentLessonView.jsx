@@ -131,23 +131,6 @@ const StudentLessonView = () => {
     }
   };
 
-  useEffect(() => {
-
-    
-    return () => {
-      
-      // Only end session if we're actually connected and not in the middle of connecting
-      if (conversation.status === 'connected') {
-        try {
-          conversation.endSession();
-        } catch (error) {
-          console.error('Error ending voice session on cleanup:', error);
-        }
-      }
-
-      stopVoiceAgent();
-    };
-  }, []);
 
   // Fetch the agent configuration on component mount
   useEffect(() => {
@@ -215,150 +198,14 @@ const StudentLessonView = () => {
     }
   };
 
-  const stopVoiceAgent = async () => {
-    // 1. Prevent multiple disconnect attempts from running simultaneously
-    if ((conversation.status !== 'connected' && !isSessionActive)) {
-      console.log('Disconnection already in progress or session is not active.');
-      return;
-    }
+  
+  
 
-    try {
-      
-
-      // 3. Gracefully handle the expected error
-      if (conversation.status === 'connected') {
-        await conversation.endSession();
-      }
-
-    } catch (err) {
-      // 4. Specifically ignore the race condition error
-      if (err.message.includes('WebSocket is already in CLOSING or CLOSED state')) {
-        console.log('Session was already closing. Cleaned up state.');
-      } else {
-        // Log other, unexpected errors
-        console.error("Error stopping voice agent:", err);
-      }
-    } finally {
-      // 5. Always reset state in a finally block to ensure a clean exit
-      clearTimeout(connectionTimeoutRef.current);
-      setIsSessionActive(false);
-      setAgentMessages([]);
-      setIsConnecting(false);
-      setVoiceError(null);
-    }
-  };
-  const toggleVoiceAgent = async () => {
-    // If already connected, stop the session
-    if (conversation.status === 'connected' || isSessionActive) {
-      await stopVoiceAgent();
-      return;
-    }
-
-    // Prevent multiple simultaneous connection attempts
-    if (isConnecting) {
-      console.log('Connection already in progress, ignoring request');
-      return;
-    }
-
-    // Validation before starting
-    if (!studentName.trim()) {
-      alert('Please enter your name first.');
-      return;
-    }
-
-    if (!uploadedFile || !pdfContent) {
-      alert('Please upload a PDF file first.');
-      return;
-    }
-
-    if (!agentId) {
-      const errorMsg = 'Voice agent not configured';
-      setVoiceError(errorMsg);
-      alert(errorMsg);
-      return;
-    }
-
-
-    // Set connecting state
-    setIsConnecting(true);
-    setVoiceError(null);
-    
-
-
-    try {
-      if (!pdfContent || pdfContent.trim().length === 0) {
-        throw new Error('PDF content is empty or invalid');
-      }
-
-      const response = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          agentId: agentId,
-          studentName: studentName.trim(),
-          pdfContent: pdfContent,
-          fileName: uploadedFile.name,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const { signedUrl, sessionInfo } = data;
-      
-      if (!signedUrl) {
-        throw new Error('No signed URL received from server');
-      }
-
-      console.log('Connecting to voice agent via:', signedUrl);
-      console.log('Session info:', sessionInfo);
-
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'system',
-        content: 'Connecting to voice agent...',
-        timestamp: new Date()
-      }]);
-
-      // Start the conversation
-      const conversationId = await conversation.startSession({ 
-        signedUrl: signedUrl 
-      });
-      
-      console.log('Voice conversation started:', conversationId);
-
-    } catch (error) {
-      console.error('Error starting voice agent:', error);
-      
-      setIsConnecting(false);
-      
-      let errorMessage = 'Unable to start voice agent. ';
-      
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        errorMessage += 'Connection timeout - please check your internet connection.';
-      } else if (error.message) {
-        errorMessage += error.message;
-      } else {
-        errorMessage += 'Please try again later.';
-      }
-      
-      setVoiceError(errorMessage);
-      
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'error',
-        content: `${errorMessage}`,
-        timestamp: new Date()
-      }]);
-
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-      }
+  const toggleVoiceAgent = () => {
+    if (isSessionActive || isConnecting) {
+      stopVoiceSession();
+    } else {
+      startVoiceSession();
     }
   };
 
