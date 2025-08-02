@@ -1,7 +1,7 @@
 
   // ElevenLabs Voice Agent Integration
 import React, { useEffect, useState, useRef } from 'react';
-import { ElevenLabsClient } from '@elevenlabs/client'; 
+import { ElevenLabsClient } from 'elevenlabs'; 
 import '../styles/StudentLessonView.css';
 import {
   BookOpen,
