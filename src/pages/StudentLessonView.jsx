@@ -67,7 +67,7 @@ const StudentLessonView = () => {
     },
 
     // Tool to get session context information
-    getSessionContext: async () => {
+    getLessonContext: async () => {
       console.log('Agent requested session context');
       return {
         student_name: studentName || "Student",
