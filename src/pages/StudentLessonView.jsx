@@ -359,6 +359,12 @@ const StudentLessonView = () => {
       if (!signedUrl) {
         throw new Error('No signed URL received from server');
       }
+      
+      // Add a defensive check for the conversation object
+      if (!conversation) {
+        throw new Error('Conversation object is not available.');
+      }
+
       console.log('Connecting to voice agent via:', signedUrl);
       console.log('Session info:', sessionInfo);
       setAgentMessages(prev => [...prev, {
