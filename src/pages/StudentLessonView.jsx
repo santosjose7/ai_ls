@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useConversation, ClientTools } from '@elevenlabs/react';
+import { useConversation } from '@elevenlabs/react';
 import '../styles/StudentLessonView.css';
 
 import {
@@ -18,12 +18,16 @@ import {
   User,
 } from 'lucide-react';
 
-// Create and register the client tool only once (outside the component)
-const clientTools = new ClientTools();
-clientTools.register('getStudentName', ({ studentName }) => {
-  const clean = typeof studentName === 'string' ? studentName.trim() : '';
-  return { student_name: clean.length > 0 ? clean : 'Unknown' };
-});
+
+const clientTools = {
+  getStudentName: async ({ studentName }) => {
+    return {
+      student_name: studentName || "Student"
+    };
+  }
+};
+
+
 
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
