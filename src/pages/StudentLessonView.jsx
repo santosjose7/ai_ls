@@ -58,7 +58,7 @@ const StudentLessonView = () => {
     tools: [
       {
         toolId: "getStudentName",
-        name: "getStudentName",
+        clientToolName: 'getStudentName',
         description: "Gets the name of the student for the current session from the backend.",
         parameters: { type: "object", properties: {} }, // No input parameters needed
         execute: async () => {
