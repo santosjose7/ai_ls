@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import '../styles/StudentLessonView.css';
 
@@ -17,17 +17,6 @@ import {
   Settings,
   User,
 } from 'lucide-react';
-
-
-const clientTools = {
-  getStudentName: async ({ studentName }) => {
-    return {
-      student_name: studentName || "Student"
-    };
-  }
-};
-
-
 
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
@@ -48,6 +37,78 @@ const StudentLessonView = () => {
   const isConnectingRef = useRef(false);
   const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Create client tools with access to current state
+  const clientTools = useMemo(() => ({
+    // Tool to get the current student's name
+    getStudentName: async () => {
+      console.log('Agent requested student name:', studentName);
+      return {
+        student_name: studentName || "Student",
+        message: `The current student's name is ${studentName || "Student"}`
+      };
+    },
+
+    // Tool to update/set the student name (if needed)
+    setStudentName: async ({ newName }) => {
+      console.log('Agent attempting to set student name:', newName);
+      if (newName && typeof newName === 'string' && newName.trim().length > 0) {
+        setStudentName(newName.trim());
+        return {
+          success: true,
+          student_name: newName.trim(),
+          message: `Student name updated to ${newName.trim()}`
+        };
+      }
+      return {
+        success: false,
+        message: "Invalid name provided"
+      };
+    },
+
+    // Tool to get session context information
+    getSessionContext: async () => {
+      console.log('Agent requested session context');
+      return {
+        student_name: studentName || "Student",
+        has_pdf: !!uploadedFile,
+        pdf_name: uploadedFile?.name || null,
+        pdf_processed: !!pdfContent,
+        session_active: isSessionActive,
+        message: `Session context: Student=${studentName || "Student"}, PDF=${uploadedFile?.name || 'none'}, Processed=${!!pdfContent}`
+      };
+    },
+
+    // Tool to log messages (useful for debugging)
+    logMessage: async ({ message, level = 'info' }) => {
+      console.log(`[Agent ${level.toUpperCase()}]:`, message);
+      return {
+        logged: true,
+        message: `Logged: ${message}`
+      };
+    },
+
+    // Tool to show notifications to the user
+    showNotification: async ({ message, type = 'info' }) => {
+      console.log(`[Agent Notification ${type.toUpperCase()}]:`, message);
+      
+      // Add a message to the chat
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'system',
+          content: `📢 ${message}`,
+          timestamp: new Date(),
+        },
+      ]);
+
+      return {
+        success: true,
+        message: `Notification shown: ${message}`
+      };
+    }
+  }), [studentName, uploadedFile, pdfContent, isSessionActive]);
 
   const validateAgentId = (id) => {
     if (!id || typeof id !== 'string') return false;
@@ -70,7 +131,7 @@ const StudentLessonView = () => {
         {
           id: Date.now(),
           type: 'system',
-          content: 'Voice agent connected! Start speaking.',
+          content: `Voice agent connected! Hello ${studentName || 'there'}, I'm ready to help you learn.`,
           timestamp: new Date(),
         },
       ]);
@@ -85,7 +146,7 @@ const StudentLessonView = () => {
         {
           id: Date.now(),
           type: 'system',
-          content: 'Voice agent disconnected.',
+          content: 'Voice agent disconnected. Hope to help you again soon!',
           timestamp: new Date(),
         },
       ]);
@@ -242,8 +303,8 @@ const StudentLessonView = () => {
 
       await conversation.startSession({
         signedUrl,
-        
-        // initial dynamic variable (optional since tool can supply): student_name: studentName.trim()
+        // You can optionally pass initial variables here
+        // variables: { student_name: studentName.trim() }
       });
 
       clearTimeout(timeout);
