@@ -79,6 +79,52 @@ const StudentLessonView = () => {
       };
     },
 
+    // Tool to get the actual PDF content for learning
+    getPdfContent: async () => {
+      console.log('Agent requested PDF content');
+      if (!pdfContent) {
+        return {
+          has_content: false,
+          content: null,
+          message: "No PDF content available. Please upload and process a PDF first."
+        };
+      }
+      
+      return {
+        has_content: true,
+        content: pdfContent,
+        pdf_name: uploadedFile?.name || "Unknown PDF",
+        content_length: pdfContent.length,
+        message: `PDF content retrieved: ${uploadedFile?.name || "Unknown PDF"} (${pdfContent.length} characters)`
+      };
+    },
+
+    // Tool to get a summary/preview of the PDF content
+    getPdfSummary: async ({ max_length = 500 }) => {
+      console.log('Agent requested PDF summary, max length:', max_length);
+      if (!pdfContent) {
+        return {
+          has_content: false,
+          summary: null,
+          message: "No PDF content available for summary."
+        };
+      }
+
+      const summary = pdfContent.length > max_length 
+        ? pdfContent.substring(0, max_length) + "..."
+        : pdfContent;
+
+      return {
+        has_content: true,
+        summary: summary,
+        full_length: pdfContent.length,
+        summary_length: summary.length,
+        is_truncated: pdfContent.length > max_length,
+        pdf_name: uploadedFile?.name || "Unknown PDF",
+        message: `PDF summary generated from ${uploadedFile?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
+      };
+    },
+
     // Tool to log messages (useful for debugging)
     logMessage: async ({ message, level = 'info' }) => {
       console.log(`[Agent ${level.toUpperCase()}]:`, message);
