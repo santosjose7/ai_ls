@@ -56,7 +56,6 @@ const StudentLessonView = () => {
     return uuidRegex.test(agentId) || (alphanumericRegex.test(agentId) && agentId.length >= 8);
   };
 
-  // 1. Get `sendMessage` from the useConversation hook
   const { conversation, sendMessage } = useConversation({
     tools: [
       {
@@ -174,18 +173,14 @@ const StudentLessonView = () => {
     }
   });
 
-  // 2. Define our own custom function to send text
   const sendTextToAgent = (text) => {
     if (!isSessionActive || !text || !text.trim()) {
       console.log('Cannot send message: session not active or message is empty.');
       return;
     }
-    // Use the sendMessage function from the hook
     sendMessage(text);
   };
 
-
-  // Effect to provide initial context when the session becomes active
   useEffect(() => {
     if (isSessionActive && studentName && pdfContent) {
       console.log('Session active. Sending initial context to the agent.');
@@ -194,11 +189,9 @@ const StudentLessonView = () => {
         Student Name: ${studentName}.
         Lesson Content: ${pdfContent}.
       `;
-      // 3. Use our new custom function
       sendTextToAgent(initialContextMessage);
     }
-  }, [isSessionActive, studentName, pdfContent, sendMessage]); // Added sendMessage to dependency array
-
+  }, [isSessionActive, studentName, pdfContent, sendMessage]);
 
   useEffect(() => {
     fetchAgentConfig();
@@ -206,7 +199,7 @@ const StudentLessonView = () => {
       if (connectionTimeoutRef.current) {
         clearTimeout(connectionTimeoutRef.current);
       }
-      if (conversation.status === 'connected' && !isConnectingRef.current) {
+      if (conversation && conversation.status === 'connected' && !isConnectingRef.current) {
         try {
           conversation.endSession();
         } catch (error) {
@@ -214,7 +207,7 @@ const StudentLessonView = () => {
         }
       }
     };
-  }, []);
+  }, [conversation]);
 
   const fetchAgentConfig = async () => {
     try {
@@ -280,7 +273,7 @@ const StudentLessonView = () => {
 
   const stopVoiceAgent = async () => {
     try {
-      if (conversation.status === 'connected') {
+      if (conversation && conversation.status === 'connected') {
         await conversation.endSession();
       }
       clearTimeout(connectionTimeoutRef.current);
@@ -297,7 +290,7 @@ const StudentLessonView = () => {
   };
 
   const toggleVoiceAgent = async () => {
-    if (conversation.status === 'connected' || isSessionActive) {
+    if ((conversation && conversation.status === 'connected') || isSessionActive) {
       await stopVoiceAgent();
       return;
     }
@@ -420,8 +413,8 @@ const StudentLessonView = () => {
           key={i}
           className={`spectrum-bar ${
             isConnecting ? 'connecting' :
-            conversation.status === 'connected' && conversation.isSpeaking ? 'speaking' :
-            conversation.status === 'connected' ? 'listening' : ''
+            conversation && conversation.status === 'connected' && conversation.isSpeaking ? 'speaking' :
+            conversation && conversation.status === 'connected' ? 'listening' : ''
           }`}
           style={{
             transform: `rotate(${angle}deg) translateY(-130px)`,
@@ -535,7 +528,7 @@ const StudentLessonView = () => {
           </div>
         )}
 
-        {(conversation.status === 'connected' || isSessionActive) && (
+        {((conversation && conversation.status === 'connected') || isSessionActive) && (
           <div className="voice-status-message connected">
             <CheckCircle2 size={16} />
             <span>Connected and ready to help {studentName}!</span>
@@ -552,18 +545,18 @@ const StudentLessonView = () => {
             <button
               onClick={toggleVoiceAgent}
               className={`voice-agent-center-btn ${
-                conversation.status === 'connected' || isSessionActive ? 'connected' :
+                (conversation && conversation.status === 'connected') || isSessionActive ? 'connected' :
                 voiceError ? 'error' : ''
               }`}
               title={
-                conversation.status === 'connected' || isSessionActive ? 'End voice session' :
+                (conversation && conversation.status === 'connected') || isSessionActive ? 'End voice session' :
                 voiceError ? voiceError : 'Start voice assistant'
               }
               disabled={isConnecting || (!agentId && !voiceError) || !studentName.trim() || !pdfContent}
             >
               {isConnecting ? (
                 <RefreshCw className="spinning" size={24} />
-              ) : (conversation.status === 'connected' || isSessionActive) ? (
+              ) : ((conversation && conversation.status === 'connected') || isSessionActive) ? (
                 <BookOpen size={60} style={{ color: '#c62b2bff', fill:'#c62b2bff' }} />
               ) : voiceError ? (
                 <AlertCircle size={24} />
@@ -581,7 +574,6 @@ const StudentLessonView = () => {
               className="query-input"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                  // 4. Use our new custom function
                   sendTextToAgent(e.currentTarget.value.trim());
                   e.currentTarget.value = '';
                 }
