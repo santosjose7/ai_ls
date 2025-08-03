@@ -56,8 +56,8 @@ const StudentLessonView = () => {
     return uuidRegex.test(agentId) || (alphanumericRegex.test(agentId) && agentId.length >= 8);
   };
 
-  // ElevenLabs Voice Agent Integration with Tools
-  const conversation = useConversation({
+  // 1. Get `sendMessage` from the useConversation hook
+  const { conversation, sendMessage } = useConversation({
     tools: [
       {
         toolId: "setStudentName",
@@ -174,20 +174,30 @@ const StudentLessonView = () => {
     }
   });
 
+  // 2. Define our own custom function to send text
+  const sendTextToAgent = (text) => {
+    if (!isSessionActive || !text || !text.trim()) {
+      console.log('Cannot send message: session not active or message is empty.');
+      return;
+    }
+    // Use the sendMessage function from the hook
+    sendMessage(text);
+  };
+
+
   // Effect to provide initial context when the session becomes active
   useEffect(() => {
     if (isSessionActive && studentName && pdfContent) {
       console.log('Session active. Sending initial context to the agent.');
-      // This message structure relies on the agent's prompt being configured
-      // to understand it and trigger the appropriate tools.
       const initialContextMessage = `
         Initialize session.
         Student Name: ${studentName}.
         Lesson Content: ${pdfContent}.
       `;
-      conversation.sendText(initialContextMessage);
+      // 3. Use our new custom function
+      sendTextToAgent(initialContextMessage);
     }
-  }, [isSessionActive, studentName, pdfContent, conversation]);
+  }, [isSessionActive, studentName, pdfContent, sendMessage]); // Added sendMessage to dependency array
 
 
   useEffect(() => {
@@ -571,7 +581,8 @@ const StudentLessonView = () => {
               className="query-input"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                  conversation.sendText(e.currentTarget.value.trim());
+                  // 4. Use our new custom function
+                  sendTextToAgent(e.currentTarget.value.trim());
                   e.currentTarget.value = '';
                 }
               }}
