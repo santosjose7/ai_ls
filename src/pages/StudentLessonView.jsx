@@ -1,199 +1,162 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useConversation } from '@elevenlabs/react';
+import { useConversation, ClientTools } from '@elevenlabs/react';
 import '../styles/StudentLessonView.css';
 
 import {
-  Book,
   BookOpen,
-  ChevronLeft,
+  Upload,
+  FileText,
+  X,
   Loader,
-  RefreshCw,
-  PhoneCall,
-  PhoneOff,
-  AlertCircle,
   CheckCircle2,
+  AlertCircle,
+  RefreshCw,
   Home,
   GraduationCap,
   TrendingUp,
-  FileText,
   Settings,
-  Upload,
-  X,
-  User
+  User,
 } from 'lucide-react';
+
+// Create and register the client tool only once (outside the component)
+const clientTools = new ClientTools();
+clientTools.register('getStudentName', ({ studentName }) => {
+  const clean = typeof studentName === 'string' ? studentName.trim() : '';
+  return { student_name: clean.length > 0 ? clean : 'Unknown' };
+});
 
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
-  // Student and PDF state
+  // Local state
   const [studentName, setStudentName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
-
-  // Voice Agent State
   const [agentId, setAgentId] = useState(null);
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [backendSessionId, setBackendSessionId] = useState(null); // State for the backend session ID
 
-  // Refs
+  const maxConnectionAttempts = 3;
+  const isConnectingRef = useRef(false);
+  const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Validation function for agent ID
-  const validateAgentId = (agentId) => {
-    if (!agentId || typeof agentId !== 'string') {
-      return false;
-    }
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const alphanumericRegex = /^[a-zA-Z0-9_-]+$/;
-
-    return uuidRegex.test(agentId) || (alphanumericRegex.test(agentId) && agentId.length >= 8);
+  const validateAgentId = (id) => {
+    if (!id || typeof id !== 'string') return false;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const safe = /^[a-zA-Z0-9_-]+$/;
+    return uuid.test(id) || (safe.test(id) && id.length >= 8);
   };
 
-  // ElevenLabs Voice Agent Integration with Backend-Fetching Tools
-  const { conversation, sendMessage } = useConversation({
-    tools: [
-      {
-        toolId: "getStudentName",
-        clientToolName: 'getStudentName',
-        description: "Gets the name of the student for the current session from the backend.",
-        parameters: { type: "object", properties: {} }, // No input parameters needed
-        execute: async () => {
-          if (!backendSessionId) return { success: false, output: "Session ID not available." };
-          try {
-            const response = await fetch(`${API_BASE}/api/voice/context/${backendSessionId}`);
-            if (!response.ok) throw new Error(`Failed to fetch context: ${response.statusText}`);
-            const data = await response.json();
-            return { success: true, output: data.studentName };
-          } catch (error) {
-            console.error("Error in getStudentName tool:", error);
-            return { success: false, output: "Could not retrieve student name." };
-          }
-        },
-      },
-      {
-        toolId: "getLessonContent",
-        name: "getLessonContent",
-        description: "Gets the lesson content from the uploaded document from the backend.",
-        parameters: { type: "object", properties: {} },
-        execute: async () => {
-          if (!backendSessionId) return { success: false, output: "Session ID not available." };
-          try {
-            const response = await fetch(`${API_BASE}/api/voice/context/${backendSessionId}`);
-            if (!response.ok) throw new Error(`Failed to fetch context: ${response.statusText}`);
-            const data = await response.json();
-            return { success: true, output: data.lessonContent };
-          } catch (error) {
-            console.error("Error in getLessonContent tool:", error);
-            return { success: false, output: "Could not retrieve lesson content." };
-          }
-        },
-      },
-    ],
+  // Hook for managing the voice conversation
+  const conversation = useConversation({
+    clientTools, 
     onConnect: () => {
-      console.log('Voice agent connected successfully');
+      isConnectingRef.current = false;
       setIsConnecting(false);
       setIsSessionActive(true);
       setVoiceError(null);
-      setAgentMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'system',
-        content: 'Voice agent connected! Start speaking to interact.',
-        timestamp: new Date()
-      }]);
+      setConnectionAttempts(0);
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'system',
+          content: 'Voice agent connected! Start speaking.',
+          timestamp: new Date(),
+        },
+      ]);
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
     },
     onDisconnect: () => {
-      console.log('Voice agent disconnected');
+      isConnectingRef.current = false;
       setIsConnecting(false);
       setIsSessionActive(false);
-      setBackendSessionId(null); // Clear session ID on disconnect
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'system',
+          content: 'Voice agent disconnected.',
+          timestamp: new Date(),
+        },
+      ]);
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
     },
-    onMessage: (message) => {
-      console.log('Voice agent message received:', message);
-      let messageContent = '';
-      let messageType = 'agent';
-      if (typeof message === 'string') {
-        messageContent = message;
-      } else if (message) {
-        messageContent = message.message || message.text || message.content || JSON.stringify(message);
-        messageType = message.type || message.source || 'agent';
-      }
-      setAgentMessages(prev => [...prev, {
-        id: Date.now() + Math.random(),
-        type: messageType,
-        content: messageContent,
-        timestamp: new Date(),
-        isFinal: message?.isFinal !== false
-      }]);
+    onMessage: (msg) => {
+      const content = typeof msg === 'string'
+        ? msg
+        : msg.message ?? msg.text ?? msg.content ?? JSON.stringify(msg);
+      const type = typeof msg === 'string'
+        ? 'agent'
+        : msg.type ?? msg.source ?? 'agent';
+
+      setAgentMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          type,
+          content,
+          timestamp: new Date(),
+          isFinal: msg?.isFinal ?? true,
+        },
+      ]);
     },
-    onError: (error) => {
-      console.error('Voice agent error:', error);
+    onError: (err) => {
+      const errorMessage = err?.message ?? err?.toString() ?? 'Unknown error';
+      console.error('Voice agent error:', errorMessage);
+      isConnectingRef.current = false;
       setIsConnecting(false);
       setIsSessionActive(false);
-      const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
       setVoiceError(errorMessage);
-    }
+      setAgentMessages((prev) => [
+        ...prev,
+        { id: Date.now(), type: 'error', content: `Error: ${errorMessage}`, timestamp: new Date() },
+      ]);
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+    },
   });
 
   useEffect(() => {
-    fetchAgentConfig();
-    return () => {
-      if (conversation && conversation.status === 'connected') {
-        try {
-          conversation.endSession();
-        } catch (error) {
-          console.error('Error ending voice session on cleanup:', error);
-        }
-      }
-    };
-  }, [conversation]);
-
-  const fetchAgentConfig = async () => {
-    try {
-      const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-      if (defaultAgentId && validateAgentId(defaultAgentId)) {
-        setAgentId(defaultAgentId);
-      } else {
-        setVoiceError('Voice agent not configured');
-      }
-    } catch (error) {
-      console.error('Error fetching agent config:', error);
+    const defaultAgent = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+    if (validateAgentId(defaultAgent)) {
+      setAgentId(defaultAgent);
+      console.log('Using agent ID:', defaultAgent);
+    } else {
       setVoiceError('Voice agent not configured');
     }
-  };
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a PDF file only.');
+    return () => {
+      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      if (conversation.status === 'connected' && !isConnectingRef.current) {
+        conversation.endSession().catch(console.error);
+      }
+    };
+  }, []);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || file.type !== 'application/pdf' || file.size > 10 * 1024 * 1024) {
+      alert('Please upload a valid PDF (< 10MB).');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size should be less than 10MB.');
-      return;
-    }
+
     setUploadedFile(file);
     setIsProcessingPDF(true);
     try {
-      const formData = new FormData();
-      formData.append('pdf', file);
-      const response = await fetch(`${API_BASE}/api/voice/process-pdf`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to process PDF');
-      }
-      const data = await response.json();
-      setPdfContent(data.content);
-      console.log('PDF processed successfully');
-    } catch (error) {
-      console.error('Error processing PDF:', error);
-      alert('Error processing PDF. Please try again.');
+      const form = new FormData();
+      form.append('pdf', file);
+      const resp = await fetch(`${API_BASE}/api/voice/process-pdf`, { method: 'POST', body: form });
+      if (!resp.ok) throw new Error('PDF processing failed');
+      const json = await resp.json();
+      setPdfContent(json.content);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to process PDF.');
       setUploadedFile(null);
     } finally {
       setIsProcessingPDF(false);
@@ -203,27 +166,58 @@ const StudentLessonView = () => {
   const removeFile = () => {
     setUploadedFile(null);
     setPdfContent('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    fileInputRef.current && (fileInputRef.current.value = '');
+  };
+
+  const stopVoiceAgent = async () => {
+    if (conversation.status === 'connected') {
+      await conversation.endSession();
     }
+    if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+    isConnectingRef.current = false;
+    setIsSessionActive(false);
+    setIsConnecting(false);
+    setVoiceError(null);
+    setConnectionAttempts(0);
+    setAgentMessages([]);
   };
 
   const toggleVoiceAgent = async () => {
-    if (isSessionActive || isConnecting) {
-      if (conversation) conversation.endSession();
+    if (conversation.status === 'connected') {
+      await stopVoiceAgent();
       return;
     }
 
-    if (!studentName.trim() || !pdfContent || !agentId) {
-      alert('Please enter your name and upload a PDF first.');
+    if (isConnecting || isConnectingRef.current) return;
+    if (!studentName.trim()) return alert('Please enter your name.');
+    if (!uploadedFile || !pdfContent) return alert('Please upload a PDF first.');
+    if (!agentId) return alert('Voice agent not configured.');
+
+    if (connectionAttempts >= maxConnectionAttempts) {
+      setVoiceError('Max attempts reached.');
       return;
     }
 
+    isConnectingRef.current = true;
     setIsConnecting(true);
     setVoiceError(null);
+    setConnectionAttempts((c) => c + 1);
+
+    const timeout = setTimeout(() => {
+      if (isConnectingRef.current) {
+        isConnectingRef.current = false;
+        setIsConnecting(false);
+        setVoiceError('Connection timeout.');
+        setAgentMessages((prev) => [
+          ...prev,
+          { id: Date.now(), type: 'error', content: 'Connection timeout.', timestamp: new Date() },
+        ]);
+      }
+    }, 30000);
+    connectionTimeoutRef.current = timeout;
 
     try {
-      const response = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
+      const resp = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -233,52 +227,62 @@ const StudentLessonView = () => {
           fileName: uploadedFile.name,
         }),
       });
+      if (!resp.ok) throw new Error(`Server responded ${resp.status}`);
+      const { signedUrl } = await resp.json();
+      if (!signedUrl) throw new Error('No signedUrl returned');
 
-      if (!response.ok) {
-        throw new Error(`Failed to get signed URL: ${response.statusText}`);
-      }
+      setAgentMessages((prev) => [
+        ...prev,
+        { id: Date.now(), type: 'system', content: 'Connecting to voice agent...', timestamp: new Date() },
+      ]);
 
-      const data = await response.json();
-      
-      if (!data.signedUrl || !data.sessionId) {
-        throw new Error('Invalid response from server. Missing signedUrl or sessionId.');
-      }
+      await conversation.startSession({
+        signedUrl,
+        
+        // initial dynamic variable (optional since tool can supply): student_name: studentName.trim()
+      });
 
-      setBackendSessionId(data.sessionId); // Store the session ID from the backend
-
-      if (!conversation) {
-        throw new Error('Conversation object is not available.');
-      }
-
-      await conversation.startSession({ signedUrl: data.signedUrl });
-
-    } catch (error) {
-      console.error('Error starting voice agent:', error);
-      setVoiceError(error.message);
+      clearTimeout(timeout);
+    } catch (e) {
+      console.error(e);
+      isConnectingRef.current = false;
       setIsConnecting(false);
+      setVoiceError(e.message ?? 'Failed to connect');
+      setConnectionAttempts((c) => c - 1);
+      setAgentMessages((prev) => [
+        ...prev,
+        { id: Date.now(), type: 'error', content: `Error: ${e.message}`, timestamp: new Date() },
+      ]);
+      clearTimeout(timeout);
     }
+  };
+
+  const retryVoiceConnection = () => {
+    setConnectionAttempts(0);
+    setVoiceError(null);
+    toggleVoiceAgent();
   };
 
   const generateSpectrumBars = () => {
     const bars = [];
-    const totalBars = 60;
-    for (let i = 0; i < totalBars; i++) {
-      const angle = (i / totalBars) * 360;
-      const hue = (i / totalBars) * 360;
+    const total = 60;
+    for (let i = 0; i < total; i++) {
+      const angle = (i / total) * 360;
+      const hue = (i / total) * 360;
       bars.push(
-        <div
-          key={i}
-          className={`spectrum-bar ${
-            isConnecting ? 'connecting' :
-            conversation && conversation.status === 'connected' && conversation.isSpeaking ? 'speaking' :
-            conversation && conversation.status === 'connected' ? 'listening' : ''
-          }`}
-          style={{
+        <div key={i} className={`spectrum-bar ${
+            isConnecting
+              ? 'connecting'
+              : conversation.status === 'connected'
+                ? conversation.isSpeaking
+                  ? 'speaking'
+                  : 'listening'
+                : ''
+          }`} style={{
             transform: `rotate(${angle}deg) translateY(-130px)`,
             background: `hsl(${hue}, 70%, 60%)`,
             animationDelay: `${i * 0.05}s`
-          }}
-        />
+          }} />
       );
     }
     return bars;
@@ -286,146 +290,147 @@ const StudentLessonView = () => {
 
   return (
     <>
-      {/* Header Section */}
+      {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
-          <div className="header-left">
-            <div className="header-left-inner">
-              <div className="header-icon">
-                <BookOpen className="icon-medium" />
-              </div>
-              <h2>AI Learning Assistant</h2>
-            </div>
+          <div className="header-left-inner">
+            <div className="header-icon"><BookOpen className="icon-medium" /></div>
+            <h2>AI Learning Assistant</h2>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container-lessons-page">
-        {/* Setup Section */}
-        <div className="setup-section">
-          <div className="student-input-container">
-            <div className="input-group">
-              <User size={20} className="input-icon" />
-              <input
-                type="text"
-                placeholder="Enter your name"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                className="student-name-input"
-                maxLength="50"
-              />
-            </div>
-          </div>
-
-          <div className="pdf-upload-container">
+        {/* Student input */}
+        <div className="student-input-container">
+          <div className="input-group">
+            <User size={20} className="input-icon" />
             <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileUpload}
-              className="file-input-hidden"
-              id="pdf-upload"
+              type="text"
+              placeholder="Enter your name"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              maxLength={50}
+              className="student-name-input"
             />
-            {!uploadedFile ? (
-              <label htmlFor="pdf-upload" className="pdf-upload-area">
-                <div className="upload-content">
-                  <Upload size={48} className="upload-icon" />
-                  <h3>Upload PDF Document</h3>
-                  <p>Drop your PDF here or click to browse</p>
-                  <span className="file-info">Max file size: 10MB</span>
-                </div>
-              </label>
-            ) : (
-              <div className="uploaded-file-info">
-                <div className="file-details">
-                  <FileText size={24} className="file-icon" />
-                  <div className="file-info">
-                    <h4>{uploadedFile.name}</h4>
-                    <p>{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
-                  <button onClick={removeFile} className="remove-file-btn">
-                    <X size={20} />
-                  </button>
-                </div>
-                {isProcessingPDF && (
-                  <div className="processing-indicator">
-                    <Loader className="spinning" size={20} />
-                    <span>Processing PDF...</span>
-                  </div>
-                )}
-                {pdfContent && !isProcessingPDF && (
-                  <div className="success-indicator">
-                    <CheckCircle2 size={20} />
-                    <span>PDF processed successfully!</span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* AI Assistant Title */}
+        {/* PDF upload */}
+        <div className="pdf-upload-container">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handleFileUpload}
+            className="file-input-hidden"
+            id="pdf-upload"
+          />
+          {!uploadedFile ? (
+            <label htmlFor="pdf-upload" className="pdf-upload-area">
+              <Upload size={48} className="upload-icon" />
+              <h3>Upload PDF Document</h3>
+              <p>Drop your PDF here or click to browse</p>
+              <span className="file-info">Max file size: 10MB</span>
+            </label>
+          ) : (
+            <div className="uploaded-file-info">
+              <FileText size={24} className="file-icon" />
+              <div className="file-info">
+                <h4>{uploadedFile.name}</h4>
+                <p>{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              </div>
+              <button onClick={removeFile} className="remove-file-btn">
+                <X size={20} />
+              </button>
+              {isProcessingPDF && (
+                <div className="processing-indicator">
+                  <Loader className="spinning" size={20} />
+                  <span>Processing PDF...</span>
+                </div>
+              )}
+              {!isProcessingPDF && pdfContent && (
+                <div className="success-indicator">
+                  <CheckCircle2 size={20} />
+                  <span>PDF processed successfully!</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Assistant title */}
         <div className="ai-assistant-title">
           <h1>AI Learning Assistant</h1>
-          <p>Upload a PDF and start learning with your personal AI tutor!</p>
+          <p>Upload a lesson and chat with your AI tutor</p>
         </div>
 
-        {/* Voice Status Message */}
+        {/* Voice status/errors */}
         {voiceError && (
           <div className="voice-status-message error">
             <AlertCircle size={20} />
             <span>{voiceError}</span>
+            {connectionAttempts < maxConnectionAttempts && (
+              <button className="retry-button" onClick={retryVoiceConnection}>
+                <RefreshCw size={16} /> Retry
+              </button>
+            )}
           </div>
         )}
 
-        {isSessionActive && (
+        {(conversation.status === 'connected' || isSessionActive) && (
           <div className="voice-status-message connected">
             <CheckCircle2 size={16} />
-            <span>Connected and ready to help {studentName}!</span>
+            <span>Connected and ready to help {studentName.trim()}!</span>
           </div>
         )}
 
-        {/* Spectrum Container */}
+        {/* Voice UI */}
         <div className="spectrum-container">
           <div className="spectrum-circle">
             {generateSpectrumBars()}
             <div className="spectrum-center">
               <BookOpen size={48} />
             </div>
+
             <button
               onClick={toggleVoiceAgent}
+              disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
               className={`voice-agent-center-btn ${
-                isSessionActive ? 'connected' :
-                voiceError ? 'error' : ''
+                conversation.status === 'connected' || isSessionActive
+                  ? 'connected'
+                  : voiceError
+                    ? 'error'
+                    : ''
               }`}
               title={
-                isSessionActive ? 'End voice session' :
-                'Start voice assistant'
+                conversation.status === 'connected' || isSessionActive
+                  ? 'End session'
+                  : voiceError
+                    ? voiceError
+                    : 'Start voice assistant'
               }
-              disabled={isConnecting || !agentId || !studentName.trim() || !pdfContent}
             >
               {isConnecting ? (
                 <RefreshCw className="spinning" size={24} />
-              ) : isSessionActive ? (
-                <BookOpen size={60} style={{ color: '#c62b2bff', fill:'#c62b2bff' }} />
+              ) : conversation.status === 'connected' || isSessionActive ? (
+                <BookOpen size={60} style={{ color: '#c62b2bff', fill: '#c62b2bff' }} />
               ) : voiceError ? (
                 <AlertCircle size={24} />
               ) : (
-                <BookOpen size={60} style={{ color: '#20bd59ff', fill: '#20bd59ff'}} />
+                <BookOpen size={60} style={{ color: '#20bd59ff', fill: '#20bd59ff' }} />
               )}
             </button>
           </div>
 
-          {/* Query Input */}
           <div className="query-input-container">
             <input
               type="text"
               placeholder="You can also type your questions here..."
               className="query-input"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                  sendMessage(e.currentTarget.value.trim());
+                if (e.key === 'Enter') {
+                  conversation.sendUserMessage(e.currentTarget.value);
                   e.currentTarget.value = '';
                 }
               }}
@@ -433,45 +438,28 @@ const StudentLessonView = () => {
           </div>
         </div>
 
-        {/* Chat Messages Display */}
+        {/* Chat history */}
         {agentMessages.length > 0 && (
           <div className="chat-messages">
             <h3>Conversation</h3>
             <div className="messages-container">
-              {agentMessages.map((message) => (
-                <div key={message.id} className={`message ${message.type}`}>
-                  <div className="message-content">{message.content}</div>
-                  <div className="message-time">
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
+              {agentMessages.map((msg) => (
+                <div key={msg.id} className={`message ${msg.type}`}>
+                  <div className="message-content">{msg.content}</div>
+                  <div className="message-time">{msg.timestamp.toLocaleTimeString()}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Bottom Navigation */}
+        {/* Bottom nav */}
         <div className="bottom-navigation">
-          <button className="nav-item active">
-            <div className="nav-icon"><Home size={20} /></div>
-            <span>Home</span>
-          </button>
-          <button className="nav-item">
-            <div className="nav-icon"><GraduationCap size={20} /></div>
-            <span>Courses</span>
-          </button>
-          <button className="nav-item">
-            <div className="nav-icon"><TrendingUp size={20} /></div>
-            <span>Progress</span>
-          </button>
-          <button className="nav-item">
-            <div className="nav-icon"><FileText size={20} /></div>
-            <span>Resources</span>
-          </button>
-          <button className="nav-item">
-            <div className="nav-icon"><Settings size={20} /></div>
-            <span>Settings</span>
-          </button>
+          <button className="nav-item active"><Home size={20} /><span>Home</span></button>
+          <button className="nav-item"><GraduationCap size={20} /><span>Courses</span></button>
+          <button className="nav-item"><TrendingUp size={20} /><span>Progress</span></button>
+          <button className="nav-item"><FileText size={20} /><span>Resources</span></button>
+          <button className="nav-item"><Settings size={20} /><span>Settings</span></button>
         </div>
       </main>
     </>
