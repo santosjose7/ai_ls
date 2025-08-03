@@ -1,11 +1,11 @@
-
-  // ElevenLabs Voice Agent Integration
 import React, { useEffect, useState, useRef } from 'react';
-import { ElevenLabsClient } from 'elevenlabs'; 
+import { useConversation } from '@elevenlabs/react';
 import '../styles/StudentLessonView.css';
-import {
-  BookOpen,
-  ChevronLeft,
+
+import { 
+  Book,
+  BookOpen, 
+  ChevronLeft, 
   Loader,
   RefreshCw,
   PhoneCall,
@@ -24,132 +24,124 @@ import {
 
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
-
+  
   // Student and PDF state
   const [studentName, setStudentName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
   const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
-  // Voice Agent State
+  // Voice Agent State - ElevenLabs Integration
   const [agentId, setAgentId] = useState(null);
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [voiceError, setVoiceError] = useState(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const maxConnectionAttempts = 3;
 
   // Refs
+  const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
-  const socketRef = useRef(null); // 👈 Ref to hold the WebSocket connection
+  const isConnectingRef = useRef(false);
 
-  // Fetch the agent configuration on component mount
-  useEffect(() => {
-    const fetchAgentConfig = async () => {
-      try {
-        const defaultAgentId = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-        if (defaultAgentId) {
-          setAgentId(defaultAgentId);
-        } else {
-          setVoiceError('Voice agent not configured');
-        }
-      } catch (error) {
-        console.error('Error fetching agent config:', error);
-        setVoiceError('Voice agent not configured');
-      }
-    };
-    fetchAgentConfig();
-  }, []);
-
-  // Function to start the voice session
-  const startVoiceSession = async () => {
-    if (!studentName.trim() || !pdfContent || !agentId) {
-      alert('Please enter your name and upload a PDF first.');
-      return;
+  // Validation function for agent ID
+  const validateAgentId = (agentId) => {
+    if (!agentId || typeof agentId !== 'string') {
+      return false;
     }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const alphanumericRegex = /^[a-zA-Z0-9_-]+$/;
+    
+    return uuidRegex.test(agentId) || (alphanumericRegex.test(agentId) && agentId.length >= 8);
+  };
 
-    setIsConnecting(true);
-    setVoiceError(null);
-    setAgentMessages([]);
-
-    try {
-      // 1. Initialize the ElevenLabs Client
-      const elevenlabs = new ElevenLabsClient({
-        apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
-      });
-
-      // 2. Create the WebSocket connection object
-      const socket = elevenlabs.conversational.connect({
-        agentId: agentId,
-        dynamicVariables: {
-            student_name: studentName.trim(),
-            title: uploadedFile?.name || 'Lesson',
-            lesson_content: pdfContent,
-        },
-      });
-
-      socketRef.current = socket; // Store the socket in a ref
-
-      // 3. Set up event listeners as per the documentation
-      socket.on('open', () => {
-        console.log('Voice agent connected successfully');
-        setIsConnecting(false);
-        setIsSessionActive(true);
-        setAgentMessages(prev => [...prev, {
-            id: Date.now(), type: 'system',
-            content: 'Voice agent connected! Start speaking to interact.',
-            timestamp: new Date()
-        }]);
-      });
-
-      socket.on('message', (message) => {
-        console.log('Voice agent message received:', message);
-        let messageContent = '';
-        let messageType = 'agent';
-
-        if (typeof message === 'string') {
-          messageContent = message;
-        } else if (message) {
-          messageContent = message.message || message.text || message.content || JSON.stringify(message);
-          messageType = message.type || message.source || 'agent';
-        }
-        setAgentMessages(prev => [...prev, {
-            id: Date.now() + Math.random(), type: messageType,
-            content: messageContent, timestamp: new Date()
-        }]);
-      });
-
-      socket.on('close', () => {
-        console.log('Voice agent disconnected');
-        setIsConnecting(false);
-        setIsSessionActive(false);
-        setAgentMessages(prev => [...prev, {
-            id: Date.now(), type: 'system',
-            content: 'Voice agent disconnected.', timestamp: new Date()
-        }]);
-      });
-
-      socket.on('error', (error) => {
-        console.error('Voice agent error:', error);
-        const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
-        setVoiceError(errorMessage);
-        setIsConnecting(false);
-        setIsSessionActive(false);
-      });
-
-    } catch (error) {
-      console.error('Error starting voice session:', error);
-      setVoiceError('Failed to initialize voice session.');
+  // ElevenLabs Voice Agent Integration
+  const conversation = useConversation({
+    onConnect: () => {
+      console.log('Voice agent connected successfully');
       setIsConnecting(false);
-    }
-  };
+      setIsSessionActive(true);
+      setVoiceError(null);
+      setConnectionAttempts(0);
+      isConnectingRef.current = false;
+      
+      setAgentMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'system',
+        content: 'Voice agent connected! Start speaking to interact.',
+        timestamp: new Date()
+      }]);
 
-  // Function to stop the voice session
-  const stopVoiceSession = () => {
-    if (socketRef.current) {
-      socketRef.current.close(); // This will trigger the 'close' event listener
-      socketRef.current = null;
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+    },
+    
+    onDisconnect: () => {
+      console.log('Voice agent disconnected');
+      setIsConnecting(false);
+      setIsSessionActive(false);
+      isConnectingRef.current = false;
+      
+      setAgentMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'system',
+        content: 'Voice agent disconnected.',
+        timestamp: new Date()
+      }]);
+
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+    },
+    
+    onMessage: (message) => {
+      console.log('Voice agent message received:', message);
+      
+      let messageContent = '';
+      let messageType = 'agent';
+
+      if (typeof message === 'string') {
+        messageContent = message;
+      } else if (message) {
+        messageContent = message.message || message.text || message.content || JSON.stringify(message);
+        messageType = message.type || message.source || 'agent';
+      }
+
+      setAgentMessages(prev => [...prev, {
+        id: Date.now() + Math.random(),
+        type: messageType,
+        content: messageContent,
+        timestamp: new Date(),
+        isFinal: message?.isFinal !== false
+      }]);
+    },
+    
+    onError: (error) => {
+      console.error('Voice agent error:', error);
+      setIsConnecting(false);
+      setIsSessionActive(false);
+      isConnectingRef.current = false;
+      
+      const errorMessage = error?.message || error?.toString() || 'Unknown connection error';
+      setVoiceError(errorMessage);
+      
+      setAgentMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'error',
+        content: `Error: ${errorMessage}`,
+        timestamp: new Date()
+      }]);
+
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
     }
-  };
+  });
 
   useEffect(() => {
     fetchAgentConfig();
@@ -168,8 +160,6 @@ const StudentLessonView = () => {
           console.error('Error ending voice session on cleanup:', error);
         }
       }
-
-      stopVoiceAgent();
     };
   }, []);
 
@@ -244,32 +234,11 @@ const StudentLessonView = () => {
   };
 
   const stopVoiceAgent = async () => {
-    // 1. Prevent multiple disconnect attempts from running simultaneously
-    if (isDisconnectingRef.current || (conversation.status !== 'connected' && !isSessionActive)) {
-      console.log('Disconnection already in progress or session is not active.');
-      return;
-    }
-
     try {
-      // 2. Set the disconnecting flag
-      isDisconnectingRef.current = true;
-      console.log("Attempting to end voice agent session...");
-
-      // 3. Gracefully handle the expected error
       if (conversation.status === 'connected') {
         await conversation.endSession();
       }
-
-    } catch (err) {
-      // 4. Specifically ignore the race condition error
-      if (err.message.includes('WebSocket is already in CLOSING or CLOSED state')) {
-        console.log('Session was already closing. Cleaned up state.');
-      } else {
-        // Log other, unexpected errors
-        console.error("Error stopping voice agent:", err);
-      }
-    } finally {
-      // 5. Always reset state in a finally block to ensure a clean exit
+      
       clearTimeout(connectionTimeoutRef.current);
       setIsSessionActive(false);
       setAgentMessages([]);
@@ -277,10 +246,13 @@ const StudentLessonView = () => {
       setVoiceError(null);
       setConnectionAttempts(0);
       isConnectingRef.current = false;
-      isDisconnectingRef.current = false; // Reset the disconnecting flag
-      console.log("Voice agent session cleanup complete.");
+      
+      console.log("Voice agent session ended manually.");
+    } catch (err) {
+      console.error("Error stopping voice agent:", err);
     }
   };
+
   const toggleVoiceAgent = async () => {
     // If already connected, stop the session
     if (conversation.status === 'connected' || isSessionActive) {
