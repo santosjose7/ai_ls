@@ -173,7 +173,7 @@ const StudentLessonView = () => {
       }
     }
   });
-
+// initial data for the session
   // Effect to provide initial context when the session becomes active
   useEffect(() => {
     if (isSessionActive && studentName && pdfContent) {
