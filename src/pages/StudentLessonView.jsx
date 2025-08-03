@@ -185,7 +185,7 @@ const StudentLessonView = () => {
         student_ame: ${studentName}.
         lesson_content: ${pdfContent}.
       `;
-      conversation.send(initialContextMessage);
+      conversation.sendMessage(initialContextMessage);
     }
   }, [isSessionActive, studentName, pdfContent, conversation]);
 
