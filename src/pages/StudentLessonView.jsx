@@ -75,7 +75,7 @@ const StudentLessonView = () => {
         },
         execute: async ({ name }) => {
           console.log(`Tool executed: setStudentName with name: ${name}`);
-          return { success: true, output: `Student_name has been set to ${name}.` };
+          return { success: true, output: `Student name has been set to ${name}.` };
         },
       },
       {
@@ -173,7 +173,7 @@ const StudentLessonView = () => {
       }
     }
   });
-// initial data for the session
+
   // Effect to provide initial context when the session becomes active
   useEffect(() => {
     if (isSessionActive && studentName && pdfContent) {
@@ -182,10 +182,10 @@ const StudentLessonView = () => {
       // to understand it and trigger the appropriate tools.
       const initialContextMessage = `
         Initialize session.
-        student_ame: ${studentName}.
-        lesson_content: ${pdfContent}.
+        Student Name: ${studentName}.
+        Lesson Content: ${pdfContent}.
       `;
-      conversation.sendMessage(initialContextMessage);
+      conversation.sendText(initialContextMessage);
     }
   }, [isSessionActive, studentName, pdfContent, conversation]);
 
@@ -563,7 +563,20 @@ const StudentLessonView = () => {
             </button>
           </div>
 
-          
+          {/* Query Input */}
+          <div className="query-input-container">
+            <input
+              type="text"
+              placeholder="You can also type your questions here..."
+              className="query-input"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                  conversation.sendText(e.currentTarget.value.trim());
+                  e.currentTarget.value = '';
+                }
+              }}
+            />
+          </div>
         </div>
 
         {/* Chat Messages Display */}
