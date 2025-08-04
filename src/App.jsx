@@ -11,7 +11,7 @@ function App() {
   return (
     
       <Routes>
-        <Route path="/" element={<StudentLessonView1 />} />
+        <Route path="/" element={<StudentLessonView />} />
         
       </Routes>
    
