@@ -213,138 +213,200 @@ const StudentLessonView = () => {
   };
 
   // Create client tools with visual capabilities
-  const clientTools = useMemo(() => ({
-    // Original tools
-    getStudentName: async () => {
-      console.log('Agent requested student name:', studentName);
-      return {
-        student_name: studentName || "Student",
-        message: `The current student's name is ${studentName || "Student"}`
-      };
-    },
 
-    setStudentName: async ({ newName }) => {
-      console.log('Agent attempting to set student name:', newName);
-      if (newName && typeof newName === 'string' && newName.trim().length > 0) {
-        setStudentName(newName.trim());
-        return {
-          success: true,
-          student_name: newName.trim(),
-          message: `Student name updated to ${newName.trim()}`
-        };
-      }
-      return {
-        success: false,
-        message: "Invalid name provided"
-      };
-    },
+const clientTools = useMemo(() => ({
+  // Original tools (keeping them as they are working)
+  getStudentName: async () => {
+    console.log('Agent requested student name:', studentName);
+    return {
+      student_name: studentName || "Student",
+      message: `The current student's name is ${studentName || "Student"}`
+    };
+  },
 
-    getSessionContext: async () => {
-      console.log('Agent requested session context');
+  setStudentName: async ({ newName }) => {
+    console.log('Agent attempting to set student name:', newName);
+    if (newName && typeof newName === 'string' && newName.trim().length > 0) {
+      setStudentName(newName.trim());
       return {
-        student_name: studentName || "Student",
-        has_pdf: !!uploadedFile,
-        pdf_name: uploadedFile?.name || null,
-        pdf_processed: !!pdfContent,
-        session_active: isSessionActive,
-        visual_panel_visible: isVisualPanelVisible,
-        current_visual: visualContent?.type || null,
-        message: `Session context: Student=${studentName || "Student"}, PDF=${uploadedFile?.name || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
+        success: true,
+        student_name: newName.trim(),
+        message: `Student name updated to ${newName.trim()}`
       };
-    },
+    }
+    return {
+      success: false,
+      message: "Invalid name provided"
+    };
+  },
 
-    getPdfContent: async () => {
-      console.log('Agent requested PDF content');
-      if (!pdfContent) {
-        return {
-          has_content: false,
-          content: null,
-          message: "No PDF content available. Please upload and process a PDF first."
-        };
-      }
+  getSessionContext: async () => {
+    console.log('Agent requested session context');
+    return {
+      student_name: studentName || "Student",
+      has_pdf: !!uploadedFile,
+      pdf_name: uploadedFile?.name || null,
+      pdf_processed: !!pdfContent,
+      session_active: isSessionActive,
+      visual_panel_visible: isVisualPanelVisible,
+      current_visual: visualContent?.type || null,
+      message: `Session context: Student=${studentName || "Student"}, PDF=${uploadedFile?.name || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
+    };
+  },
+
+  getPdfContent: async () => {
+    console.log('Agent requested PDF content');
+    if (!pdfContent) {
+      return {
+        has_content: false,
+        content: null,
+        message: "No PDF content available. Please upload and process a PDF first."
+      };
+    }
+    
+    return {
+      has_content: true,
+      content: pdfContent,
+      pdf_name: uploadedFile?.name || "Unknown PDF",
+      content_length: pdfContent.length,
+      message: `PDF content retrieved: ${uploadedFile?.name || "Unknown PDF"} (${pdfContent.length} characters)`
+    };
+  },
+
+  getPdfSummary: async ({ max_length = 500 }) => {
+    console.log('Agent requested PDF summary, max length:', max_length);
+    if (!pdfContent) {
+      return {
+        has_content: false,
+        summary: null,
+        message: "No PDF content available for summary."
+      };
+    }
+
+    const summary = pdfContent.length > max_length 
+      ? pdfContent.substring(0, max_length) + "..."
+      : pdfContent;
+
+    return {
+      has_content: true,
+      summary: summary,
+      full_length: pdfContent.length,
+      summary_length: summary.length,
+      is_truncated: pdfContent.length > max_length,
+      pdf_name: uploadedFile?.name || "Unknown PDF",
+      message: `PDF summary generated from ${uploadedFile?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
+    };
+  },
+
+  // ENHANCED VISUAL TOOLS WITH BETTER ERROR HANDLING
+  showEquation: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling showEquation with params:', params);
       
-      return {
-        has_content: true,
-        content: pdfContent,
-        pdf_name: uploadedFile?.name || "Unknown PDF",
-        content_length: pdfContent.length,
-        message: `PDF content retrieved: ${uploadedFile?.name || "Unknown PDF"} (${pdfContent.length} characters)`
-      };
-    },
-
-    getPdfSummary: async ({ max_length = 500 }) => {
-      console.log('Agent requested PDF summary, max length:', max_length);
-      if (!pdfContent) {
+      // Validate parameters
+      if (!params.latex && !params.title) {
+        const error = 'Missing required parameters: need either latex or title';
+        console.error('❌ showEquation error:', error);
         return {
-          has_content: false,
-          summary: null,
-          message: "No PDF content available for summary."
+          success: false,
+          error: error,
+          message: error
         };
       }
 
-      const summary = pdfContent.length > max_length 
-        ? pdfContent.substring(0, max_length) + "..."
-        : pdfContent;
-
-      return {
-        has_content: true,
-        summary: summary,
-        full_length: pdfContent.length,
-        summary_length: summary.length,
-        is_truncated: pdfContent.length > max_length,
-        pdf_name: uploadedFile?.name || "Unknown PDF",
-        message: `PDF summary generated from ${uploadedFile?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
-      };
-    },
-
-    // Visual display tools
-    showEquation: async ({ title, latex, explanation }) => {
-      console.log('Agent showing equation:', title);
+      const { title = 'Mathematical Expression', latex = '', explanation = '' } = params;
+      
       const content = {
         id: Date.now(),
         type: 'equation',
-        title: title || 'Mathematical Expression',
+        title: title,
         latex: latex,
         explanation: explanation,
         timestamp: new Date()
       };
       
+      console.log('✅ Setting visual content:', content);
       setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
+      setVisualHistory(prev => [...prev.slice(-9), content]); // Keep last 10 items
       
       return {
         success: true,
-        message: `Equation displayed: ${title || 'Mathematical Expression'}`
+        content_id: content.id,
+        message: `✅ Equation displayed successfully: "${title}"`,
+        visual_type: 'equation'
       };
-    },
+    } catch (error) {
+      console.error('❌ showEquation caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to show equation: ${error.message}`
+      };
+    }
+  },
 
-    showImage: async ({ title, url, caption, alt }) => {
-      console.log('Agent showing image:', title);
+  showImage: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling showImage with params:', params);
+      
+      if (!params.url && !params.title) {
+        const error = 'Missing required parameters: need either url or title';
+        console.error('❌ showImage error:', error);
+        return {
+          success: false,
+          error: error,
+          message: error
+        };
+      }
+
+      const { title = 'Visual Content', url = '', caption = '', alt = '' } = params;
+      
       const content = {
         id: Date.now(),
         type: 'image',
-        title: title || 'Visual Content',
+        title: title,
         url: url,
         caption: caption,
         alt: alt || title,
         timestamp: new Date()
       };
       
+      console.log('✅ Setting visual content:', content);
       setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
+      setVisualHistory(prev => [...prev.slice(-9), content]);
       
       return {
         success: true,
-        message: `Image displayed: ${title || 'Visual Content'}`
+        content_id: content.id,
+        message: `✅ Image displayed successfully: "${title}"`,
+        visual_type: 'image'
       };
-    },
+    } catch (error) {
+      console.error('❌ showImage caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to show image: ${error.message}`
+      };
+    }
+  },
 
-    createDiagram: async ({ title, diagramType, description, mermaidCode, explanation }) => {
-      console.log('Agent creating diagram:', title, diagramType);
+  createDiagram: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling createDiagram with params:', params);
+      
+      const { 
+        title = 'Diagram', 
+        diagramType = 'flowchart', 
+        description = '', 
+        mermaidCode = '', 
+        explanation = '' 
+      } = params;
+      
       const content = {
         id: Date.now(),
         type: 'diagram',
-        title: title || 'Diagram',
+        title: title,
         diagramType: diagramType,
         description: description,
         mermaidCode: mermaidCode,
@@ -352,150 +414,372 @@ const StudentLessonView = () => {
         timestamp: new Date()
       };
       
+      console.log('✅ Setting visual content:', content);
       setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
+      setVisualHistory(prev => [...prev.slice(-9), content]);
       
       return {
         success: true,
-        message: `Diagram created: ${title || 'Diagram'} (${diagramType})`
+        content_id: content.id,
+        message: `✅ Diagram created successfully: "${title}" (${diagramType})`,
+        visual_type: 'diagram'
       };
-    },
-
-    showStepByStep: async ({ title, steps, currentStep = 0 }) => {
-      console.log('Agent showing step-by-step:', title);
-      const content = {
-        id: Date.now(),
-        type: 'steps',
-        title: title || 'Step-by-Step Process',
-        steps: steps || [],
-        currentStep: currentStep,
-        timestamp: new Date()
-      };
-      
-      setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
-      
+    } catch (error) {
+      console.error('❌ createDiagram caught error:', error);
       return {
-        success: true,
-        message: `Step-by-step process displayed: ${title || 'Process'} (${steps?.length || 0} steps)`
+        success: false,
+        error: error.message,
+        message: `Failed to create diagram: ${error.message}`
       };
-    },
+    }
+  },
 
-    updateStepProgress: async ({ stepIndex }) => {
-      console.log('Agent updating step progress to:', stepIndex);
-      if (visualContent && visualContent.type === 'steps') {
-        const updatedContent = {
-          ...visualContent,
-          currentStep: stepIndex,
-          timestamp: new Date()
-        };
-        setVisualContent(updatedContent);
-        
+  showStepByStep: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling showStepByStep with params:', params);
+      
+      const { title = 'Step-by-Step Process', steps = [], currentStep = 0 } = params;
+      
+      // Validate steps array
+      if (!Array.isArray(steps) || steps.length === 0) {
+        const error = 'Steps must be a non-empty array';
+        console.error('❌ showStepByStep error:', error);
         return {
-          success: true,
-          message: `Step progress updated to step ${stepIndex + 1}`
+          success: false,
+          error: error,
+          message: error
         };
       }
       
-      return {
-        success: false,
-        message: "No step-by-step content currently displayed"
-      };
-    },
-
-    showMainPoints: async ({ title, points }) => {
-      console.log('Agent showing main points:', title);
       const content = {
         id: Date.now(),
-        type: 'main-points',
-        title: title || 'Key Points',
-        points: points || [],
+        type: 'steps',
+        title: title,
+        steps: steps,
+        currentStep: Math.max(0, Math.min(currentStep, steps.length - 1)),
         timestamp: new Date()
       };
       
+      console.log('✅ Setting visual content:', content);
       setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
+      setVisualHistory(prev => [...prev.slice(-9), content]);
       
       return {
         success: true,
-        message: `Main points displayed: ${title || 'Key Points'} (${points?.length || 0} points)`
+        content_id: content.id,
+        total_steps: steps.length,
+        current_step: content.currentStep,
+        message: `✅ Step-by-step process displayed: "${title}" (${steps.length} steps)`,
+        visual_type: 'steps'
       };
-    },
+    } catch (error) {
+      console.error('❌ showStepByStep caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to show step-by-step: ${error.message}`
+      };
+    }
+  },
 
-    showAnalogy: async ({ title, concept, analogy, explanation }) => {
-      console.log('Agent showing analogy:', title);
+  updateStepProgress: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling updateStepProgress with params:', params);
+      
+      const { stepIndex } = params;
+      
+      if (typeof stepIndex !== 'number' || stepIndex < 0) {
+        const error = 'stepIndex must be a non-negative number';
+        console.error('❌ updateStepProgress error:', error);
+        return {
+          success: false,
+          error: error,
+          message: error
+        };
+      }
+      
+      if (!visualContent || visualContent.type !== 'steps') {
+        const error = 'No step-by-step content currently displayed';
+        console.error('❌ updateStepProgress error:', error);
+        return {
+          success: false,
+          error: error,
+          message: error
+        };
+      }
+      
+      const maxStep = visualContent.steps.length - 1;
+      const newStepIndex = Math.min(stepIndex, maxStep);
+      
+      const updatedContent = {
+        ...visualContent,
+        currentStep: newStepIndex,
+        timestamp: new Date()
+      };
+      
+      console.log('✅ Updating step progress:', updatedContent);
+      setVisualContent(updatedContent);
+      
+      return {
+        success: true,
+        previous_step: visualContent.currentStep,
+        new_step: newStepIndex,
+        total_steps: visualContent.steps.length,
+        message: `✅ Step progress updated to step ${newStepIndex + 1} of ${visualContent.steps.length}`,
+        visual_type: 'steps'
+      };
+    } catch (error) {
+      console.error('❌ updateStepProgress caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to update step progress: ${error.message}`
+      };
+    }
+  },
+
+  showMainPoints: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling showMainPoints with params:', params);
+      
+      const { title = 'Key Points', points = [] } = params;
+      
+      if (!Array.isArray(points) || points.length === 0) {
+        const error = 'Points must be a non-empty array';
+        console.error('❌ showMainPoints error:', error);
+        return {
+          success: false,
+          error: error,
+          message: error
+        };
+      }
+      
+      const content = {
+        id: Date.now(),
+        type: 'main-points',
+        title: title,
+        points: points,
+        timestamp: new Date()
+      };
+      
+      console.log('✅ Setting visual content:', content);
+      setVisualContent(content);
+      setVisualHistory(prev => [...prev.slice(-9), content]);
+      
+      return {
+        success: true,
+        content_id: content.id,
+        points_count: points.length,
+        message: `✅ Main points displayed: "${title}" (${points.length} points)`,
+        visual_type: 'main-points'
+      };
+    } catch (error) {
+      console.error('❌ showMainPoints caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to show main points: ${error.message}`
+      };
+    }
+  },
+
+  showAnalogy: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling showAnalogy with params:', params);
+      
+      const { title = 'Analogy', concept = '', analogy = '', explanation = '' } = params;
+      
+      if (!concept && !analogy) {
+        const error = 'Both concept and analogy are required';
+        console.error('❌ showAnalogy error:', error);
+        return {
+          success: false,
+          error: error,
+          message: error
+        };
+      }
+      
       const content = {
         id: Date.now(),
         type: 'analogy',
-        title: title || 'Analogy',
+        title: title,
         concept: concept,
         analogy: analogy,
         explanation: explanation,
         timestamp: new Date()
       };
       
+      console.log('✅ Setting visual content:', content);
       setVisualContent(content);
-      setVisualHistory(prev => [...prev, content]);
+      setVisualHistory(prev => [...prev.slice(-9), content]);
       
       return {
         success: true,
-        message: `Analogy displayed: ${title || 'Analogy'}`
+        content_id: content.id,
+        message: `✅ Analogy displayed: "${title}"`,
+        visual_type: 'analogy'
       };
-    },
+    } catch (error) {
+      console.error('❌ showAnalogy caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to show analogy: ${error.message}`
+      };
+    }
+  },
 
-    clearVisuals: async () => {
-      console.log('Agent clearing visuals');
+  clearVisuals: async () => {
+    try {
+      console.log('🎯 Agent calling clearVisuals');
       setVisualContent(null);
       
       return {
         success: true,
-        message: "Visuals cleared"
+        message: "✅ Visuals cleared successfully"
       };
-    },
+    } catch (error) {
+      console.error('❌ clearVisuals caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to clear visuals: ${error.message}`
+      };
+    }
+  },
 
-    setVisualLayout: async ({ layout }) => {
-      console.log('Agent setting visual layout:', layout);
-      if (['side-by-side', 'overlay', 'fullscreen'].includes(layout)) {
-        setVisualLayout(layout);
+  setVisualLayout: async (params = {}) => {
+    try {
+      console.log('🎯 Agent calling setVisualLayout with params:', params);
+      
+      const { layout } = params;
+      const validLayouts = ['side-by-side', 'overlay', 'fullscreen'];
+      
+      if (!validLayouts.includes(layout)) {
+        const error = `Invalid layout "${layout}". Valid options: ${validLayouts.join(', ')}`;
+        console.error('❌ setVisualLayout error:', error);
         return {
-          success: true,
-          message: `Visual layout set to: ${layout}`
+          success: false,
+          error: error,
+          valid_layouts: validLayouts,
+          message: error
         };
       }
       
-      return {
-        success: false,
-        message: "Invalid layout. Use: side-by-side, overlay, or fullscreen"
-      };
-    },
-
-    logMessage: async ({ message, level = 'info' }) => {
-      console.log(`[Agent ${level.toUpperCase()}]:`, message);
-      return {
-        logged: true,
-        message: `Logged: ${message}`
-      };
-    },
-
-    showNotification: async ({ message, type = 'info' }) => {
-      console.log(`[Agent Notification ${type.toUpperCase()}]:`, message);
+      setVisualLayout(layout);
       
-      setAgentMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          type: 'system',
-          content: `📢 ${message}`,
-          timestamp: new Date(),
-        },
-      ]);
-
       return {
         success: true,
-        message: `Notification shown: ${message}`
+        previous_layout: visualLayout,
+        new_layout: layout,
+        message: `✅ Visual layout changed to: ${layout}`
+      };
+    } catch (error) {
+      console.error('❌ setVisualLayout caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to set visual layout: ${error.message}`
       };
     }
-  }), [studentName, uploadedFile, pdfContent, isSessionActive, isVisualPanelVisible, visualContent]);
+  },
+
+  // NEW: Get current visual state
+  getVisualState: async () => {
+    try {
+      console.log('🎯 Agent calling getVisualState');
+      
+      return {
+        success: true,
+        has_visual_content: !!visualContent,
+        current_visual_type: visualContent?.type || null,
+        current_visual_title: visualContent?.title || null,
+        visual_panel_visible: isVisualPanelVisible,
+        visual_layout: visualLayout,
+        visual_panel_size: visualPanelSize,
+        history_count: visualHistory.length,
+        message: `Visual state: ${visualContent ? `Showing ${visualContent.type} - "${visualContent.title}"` : 'No visual content'}`
+      };
+    } catch (error) {
+      console.error('❌ getVisualState caught error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: `Failed to get visual state: ${error.message}`
+      };
+    }
+  },
+
+  // NEW: Test visual system
+  testVisualSystem: async () => {
+    try {
+      console.log('🎯 Agent calling testVisualSystem');
+      
+      // Test with a simple equation
+      const testContent = {
+        id: Date.now(),
+        type: 'main-points',
+        title: 'Visual System Test',
+        points: [
+          {
+            title: 'System Status',
+            description: 'Visual system is working correctly!',
+            example: 'This test was called by the AI agent'
+          }
+        ],
+        timestamp: new Date()
+      };
+      
+      setVisualContent(testContent);
+      
+      return {
+        success: true,
+        test_result: 'PASSED',
+        content_id: testContent.id,
+        message: '✅ Visual system test completed successfully! The visual panel should now show a test message.',
+        timestamp: testContent.timestamp.toISOString()
+      };
+    } catch (error) {
+      console.error('❌ testVisualSystem caught error:', error);
+      return {
+        success: false,
+        test_result: 'FAILED',
+        error: error.message,
+        message: `❌ Visual system test failed: ${error.message}`
+      };
+    }
+  },
+
+  // Utility tools
+  logMessage: async ({ message, level = 'info' }) => {
+    console.log(`[Agent ${level.toUpperCase()}]:`, message);
+    return {
+      logged: true,
+      level: level,
+      message: `Logged (${level}): ${message}`
+    };
+  },
+
+  showNotification: async ({ message, type = 'info' }) => {
+    console.log(`[Agent Notification ${type.toUpperCase()}]:`, message);
+    
+    setAgentMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: 'system',
+        content: `📢 ${message}`,
+        timestamp: new Date(),
+      },
+    ]);
+
+    return {
+      success: true,
+      notification_type: type,
+      message: `Notification shown: ${message}`
+    };
+  }
+}), [studentName, uploadedFile, pdfContent, isSessionActive, isVisualPanelVisible, visualContent, visualLayout, visualPanelSize, visualHistory]);
 
   const validateAgentId = (id) => {
     if (!id || typeof id !== 'string') return false;
