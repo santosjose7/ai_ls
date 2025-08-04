@@ -999,7 +999,7 @@ const StudentLessonView = () => {
           height: 98vh;
           transition: all 0.3s ease;
           width: 99vw;
-          left: 0;
+          
         }
 
         .control-panel {
