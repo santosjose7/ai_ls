@@ -132,7 +132,7 @@ body {
 /* Setup Section */
 .setup-section {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  
   gap: 2rem;
   margin-bottom: 2rem;
   align-items: start;
