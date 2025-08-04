@@ -888,6 +888,20 @@ const StudentLessonView = () => {
                   )}
                 </button>
               </div>
+
+              <div className="query-input-container">
+                <input
+                  type="text"
+                  placeholder="You can also type your questions here..."
+                  className="query-input"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      conversation.sendUserMessage(e.currentTarget.value);
+                      e.currentTarget.value = '';
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             {/* Chat history */}
