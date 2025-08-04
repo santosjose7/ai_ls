@@ -50,6 +50,8 @@ const StudentLessonView = () => {
   const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
 
+
+  const [showBottomNav, setShowBottomNav] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
