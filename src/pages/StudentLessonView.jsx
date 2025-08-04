@@ -767,6 +767,7 @@ const StudentLessonView = () => {
         <div className={mainContentClass}>
           {/* Left Panel - Controls and Chat */}
           <div className="control-panel">
+            <div className="input-section">
             {/* Student input */}
             <div className="student-input-container">
               <div className="input-group">
@@ -823,6 +824,7 @@ const StudentLessonView = () => {
                   )}
                 </div>
               )}
+            </div>
             </div>
             <div className="ai-container">
             {/* Assistant title */}

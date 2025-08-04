@@ -139,6 +139,11 @@ body {
   align-items: start;
 }
 
+.input-section{
+  display: grid;
+  grid-template-rows: 2fr;
+  
+}
 .student-input-container {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -201,7 +206,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 0.4rem;
   border: 2px dashed var(--border);
   margin: 1rem;
   border-radius: 12px;
@@ -242,7 +247,7 @@ body {
 }
 
 .uploaded-file-info {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 .file-details {
@@ -826,7 +831,7 @@ body {
   
   .student-input-container,
   .pdf-upload-container {
-    padding: 1rem;
+    padding: 0.4rem;
   }
 
   .ai-assistant-title h1 {
