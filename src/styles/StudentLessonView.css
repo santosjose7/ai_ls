@@ -141,7 +141,7 @@ body {
 
 .input-section{
   display: grid;
-  grid-template-rows: 2fr;
+  grid-template-columns: 2fr;
   
 }
 .student-input-container {
