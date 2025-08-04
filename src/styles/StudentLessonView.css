@@ -139,18 +139,11 @@ body {
   align-items: start;
 }
 
-.input-section{
-  display: flex;
-  flex-direction: row;
-  gap: 2rem;
-  
-}
 .student-input-container {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  height: 160px;
-  padding: 0.3rem;
+  padding: 1.5rem;
   margin-bottom: 10px;
   box-shadow: 0 4px 12px var(--shadow);
 }
@@ -158,7 +151,6 @@ body {
 .input-group {
   position: relative;
   display: flex;
-  margin-top: 10%;
   align-items: center;
 }
 
@@ -196,7 +188,6 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  height: 160px;
   overflow: hidden;
   box-shadow: 0 4px 12px var(--shadow);
 }
@@ -247,7 +238,7 @@ body {
 
 .file-info {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .uploaded-file-info {
@@ -257,9 +248,9 @@ body {
 .file-details {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
   background: var(--background);
-  padding: 0.5rem;
+  padding: 1rem;
   border-radius: 12px;
   border: 1px solid var(--border);
 }
@@ -275,21 +266,21 @@ body {
 
 .file-info h4 {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 0.25rem;
 }
 
 .file-info p {
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 14px;
 }
 
 .remove-file-btn {
   background: var(--accent-red);
   color: white;
   border: none;
-  padding: 0.2rem;
+  padding: 0.5rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -305,10 +296,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.3rem;
-  padding: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 500;
 }
 
