@@ -824,7 +824,7 @@ const StudentLessonView = () => {
                 </div>
               )}
             </div>
-
+            <div className="ai-container">
             {/* Assistant title */}
             <div className="ai-assistant-title">
               <h1>AI Learning Assistant</h1>
@@ -918,6 +918,7 @@ const StudentLessonView = () => {
                 </div>
               </div>
             )}
+          </div>
           </div>
 
           {/* Right Panel - Visual Display */}
