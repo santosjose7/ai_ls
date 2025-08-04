@@ -1006,6 +1006,7 @@ const StudentLessonView = () => {
           flex: 1;
           min-width: 300px;
           overflow-y: auto;
+          padding-right: 10px;
           
         }
 
@@ -1018,6 +1019,8 @@ const StudentLessonView = () => {
           flex-direction: column;
           overflow: hidden;
           min-width: 400px;
+          max-height: 80vh;
+          magin: 0 auto;
         }
 
         .visual-panel-header {
