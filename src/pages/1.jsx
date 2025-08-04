@@ -335,6 +335,13 @@ const StudentLessonView1 = () => {
     }
   }), [studentName, uploadedFile, pdfContent, isSessionActive]);
 
+  const validateAgentId = (id) => {
+    if (!id || typeof id !== 'string') return false;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const safe = /^[a-zA-Z0-9_-]+$/;
+    return uuid.test(id) || (safe.test(id) && id.length >= 8);
+  };
+
 
 // Hook for managing the voice conversation
   const conversation = useConversation({
@@ -428,25 +435,91 @@ const StudentLessonView1 = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const toggleVoiceAgent = async () => {
+    const stopVoiceAgent = async () => {
     if (conversation.status === 'connected') {
       await conversation.endSession();
+    }
+    if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+    isConnectingRef.current = false;
+    setIsSessionActive(false);
+    setIsConnecting(false);
+    setVoiceError(null);
+    setConnectionAttempts(0);
+    setAgentMessages([]);
+  };
+
+  const toggleVoiceAgent = async () => {
+    if (conversation.status === 'connected') {
+      await stopVoiceAgent();
       return;
     }
 
-    if (isConnecting) return;
+    if (isConnecting || isConnectingRef.current) return;
     if (!studentName.trim()) return alert('Please enter your name.');
     if (!uploadedFile || !pdfContent) return alert('Please upload a PDF first.');
+    if (!agentId) return alert('Voice agent not configured.');
 
+    if (connectionAttempts >= maxConnectionAttempts) {
+      setVoiceError('Max attempts reached.');
+      return;
+    }
+
+    isConnectingRef.current = true;
     setIsConnecting(true);
     setVoiceError(null);
+    setConnectionAttempts((c) => c + 1);
+
+    const timeout = setTimeout(() => {
+      if (isConnectingRef.current) {
+        isConnectingRef.current = false;
+        setIsConnecting(false);
+        setVoiceError('Connection timeout.');
+        setAgentMessages((prev) => [
+          ...prev,
+          { id: Date.now(), type: 'error', content: 'Connection timeout.', timestamp: new Date() },
+        ]);
+      }
+    }, 30000);
+    connectionTimeoutRef.current = timeout;
 
     try {
-      await conversation.startSession({ signedUrl: 'demo-url' });
+      const resp = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId,
+          studentName: studentName.trim(),
+          pdfContent,
+          fileName: uploadedFile.name,
+        }),
+      });
+      if (!resp.ok) throw new Error(`Server responded ${resp.status}`);
+      const { signedUrl } = await resp.json();
+      if (!signedUrl) throw new Error('No signedUrl returned');
+
+      setAgentMessages((prev) => [
+        ...prev,
+        { id: Date.now(), type: 'system', content: 'Connecting to voice agent...', timestamp: new Date() },
+      ]);
+
+      await conversation.startSession({
+        signedUrl,
+        
+        // variables: { student_name: studentName.trim() }
+      });
+
+      clearTimeout(timeout);
     } catch (e) {
       console.error(e);
+      isConnectingRef.current = false;
       setIsConnecting(false);
       setVoiceError(e.message ?? 'Failed to connect');
+      setConnectionAttempts((c) => c - 1);
+      setAgentMessages((prev) => [
+        ...prev,
+        { id: Date.now(), type: 'error', content: `Error: ${e.message}`, timestamp: new Date() },
+      ]);
+      clearTimeout(timeout);
     }
   };
 
@@ -477,80 +550,73 @@ const StudentLessonView1 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: rotate(var(--angle)) translateY(-130px) scaleY(0.5); }
-          50% { opacity: 1; transform: rotate(var(--angle)) translateY(-130px) scaleY(1.5); }
-        }
-      `}</style>
-      
+    <div className={styles.container}>
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-8 h-8 text-indigo-600" />
-            <h2 className="text-2xl font-bold text-gray-800">AI Learning Assistant</h2>
+      <header className={styles.header}>
+        <div className={styles.headerContent}>
+          <div className={styles.headerTitleWrapper}>
+            <BookOpen className={styles.headerIcon} />
+            <h2 className={styles.headerTitle}>AI Learning Assistant</h2>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className={styles.main}>
         {/* Student Input */}
-        <div className="mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center gap-3 max-w-md">
-              <User className="w-5 h-5 text-gray-400" />
+        <div className={styles.section}>
+          <div className={styles.card}>
+            <div className={styles.studentInputWrapper}>
+              <User className={styles.inputIcon} />
               <input
                 type="text"
                 placeholder="Enter your name"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 maxLength={50}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={styles.studentInput}
               />
             </div>
           </div>
         </div>
 
         {/* PDF Upload */}
-        <div className="mb-8">
+        <div className={styles.section}>
           <input
             ref={fileInputRef}
             type="file"
             accept=".pdf"
             onChange={handleFileUpload}
-            className="hidden"
+            className={styles.hiddenInput}
             id="pdf-upload"
           />
           {!uploadedFile ? (
-            <label htmlFor="pdf-upload" className="block bg-white rounded-lg shadow-sm border-2 border-dashed border-gray-300 hover:border-indigo-400 transition-colors cursor-pointer">
-              <div className="p-8 text-center">
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Upload PDF Document</h3>
-                <p className="text-gray-500 mb-2">Drop your PDF here or click to browse</p>
-                <span className="text-sm text-gray-400">Max file size: 10MB</span>
+            <label htmlFor="pdf-upload" className={styles.uploadArea}>
+              <div className={styles.uploadContent}>
+                <Upload className={styles.uploadIcon} />
+                <h3 className={styles.uploadTitle}>Upload PDF Document</h3>
+                <p className={styles.uploadDescription}>Drop your PDF here or click to browse</p>
+                <span className={styles.uploadLimit}>Max file size: 10MB</span>
               </div>
             </label>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center gap-4">
-                <FileText className="w-8 h-8 text-indigo-600" />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-800">{uploadedFile.name}</h4>
-                  <p className="text-gray-500">{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+            <div className={styles.card}>
+              <div className={styles.fileInfo}>
+                <FileText className={styles.fileIcon} />
+                <div className={styles.fileDetails}>
+                  <h4 className={styles.fileName}>{uploadedFile.name}</h4>
+                  <p className={styles.fileSize}>{(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
-                <button onClick={removeFile} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                  <X className="w-5 h-5" />
+                <button onClick={removeFile} className={styles.removeButton}>
+                  <X className={styles.removeIcon} />
                 </button>
                 {isProcessingPDF ? (
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <Loader className="w-5 h-5 animate-spin" />
+                  <div className={styles.processingStatus}>
+                    <Loader className={styles.processingIcon} />
                     <span>Processing PDF...</span>
                   </div>
                 ) : pdfContent && (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle2 className="w-5 h-5" />
+                  <div className={styles.successStatus}>
+                    <CheckCircle2 className={styles.successIcon} />
                     <span>PDF processed successfully!</span>
                   </div>
                 )}
@@ -559,48 +625,46 @@ const StudentLessonView1 = () => {
           )}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className={styles.gridLayout}>
           {/* Voice Interface */}
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">AI Learning Assistant</h1>
-              <p className="text-gray-600">Upload a lesson and chat with your AI tutor</p>
+          <div className={styles.voiceCard}>
+            <div className={styles.voiceHeader}>
+              <h1 className={styles.voiceTitle}>AI Learning Assistant</h1>
+              <p className={styles.voiceDescription}>Upload a lesson and chat with your AI tutor</p>
             </div>
 
             {voiceError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500" />
-                <span className="text-red-700">{voiceError}</span>
+              <div className={styles.errorMessage}>
+                <AlertCircle className={styles.errorIcon} />
+                <span className={styles.errorText}>{voiceError}</span>
               </div>
             )}
 
             {(conversation.status === 'connected' || isSessionActive) && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                <span className="text-green-700">Connected and ready to help {studentName.trim()}!</span>
+              <div className={styles.successMessage}>
+                <CheckCircle2 className={styles.successMessageIcon} />
+                <span className={styles.successText}>Connected and ready to help {studentName.trim()}!</span>
               </div>
             )}
 
             {/* Spectrum Visualizer */}
-            <div className="relative flex justify-center mb-8">
-              <div className="relative w-80 h-80">
+            <div className={styles.spectrumWrapper}>
+              <div className={styles.spectrumContainer}>
                 {generateSpectrumBars()}
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className={styles.spectrumCenter}>
                   <button
                     onClick={toggleVoiceAgent}
                     disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent}
-                    className={`w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    className={`${styles.spectrumButton} ${
                       conversation.status === 'connected' || isSessionActive
-                        ? 'bg-red-500 hover:bg-red-600 text-white'
-                        : 'bg-green-500 hover:bg-green-600 text-white'
-                    } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+                        ? styles.spectrumButtonActive
+                        : styles.spectrumButtonInactive
+                    }`}
                   >
                     {isConnecting ? (
-                      <RefreshCw className="w-8 h-8 animate-spin" />
-                    ) : conversation.status === 'connected' || isSessionActive ? (
-                      <BookOpen className="w-8 h-8" />
+                      <RefreshCw className={styles.spectrumButtonIconSpin} />
                     ) : (
-                      <BookOpen className="w-8 h-8" />
+                      <BookOpen className={styles.spectrumButtonIcon} />
                     )}
                   </button>
                 </div>
@@ -608,11 +672,11 @@ const StudentLessonView1 = () => {
             </div>
 
             {/* Text Input */}
-            <div className="mb-6">
+            <div className={styles.textInputWrapper}>
               <input
                 type="text"
                 placeholder="You can also type your questions here..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className={styles.textInput}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                     conversation.sendUserMessage(e.currentTarget.value);
@@ -623,12 +687,12 @@ const StudentLessonView1 = () => {
             </div>
 
             {/* Canvas Toggle */}
-            <div className="text-center">
+            <div className={styles.canvasToggleWrapper}>
               <button
                 onClick={() => setShowCanvas(!showCanvas)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className={styles.canvasToggleButton}
               >
-                <Palette className="w-5 h-5" />
+                <Palette className={styles.canvasToggleIcon} />
                 {showCanvas ? 'Hide Canvas' : 'Show Visual Canvas'}
               </button>
             </div>
@@ -636,55 +700,55 @@ const StudentLessonView1 = () => {
 
           {/* Canvas Section */}
           {showCanvas && (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Visual Learning Canvas</h3>
-                <div className="flex items-center gap-2">
+            <div className={styles.canvasCard}>
+              <div className={styles.canvasHeader}>
+                <h3 className={styles.canvasTitle}>Visual Learning Canvas</h3>
+                <div className={styles.canvasActions}>
                   <button
                     onClick={undoCanvas}
                     disabled={canvasHistory.length <= 1}
-                    className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className={styles.canvasActionButton}
                     title="Undo"
                   >
-                    <Undo className="w-4 h-4" />
+                    <Undo className={styles.canvasActionIcon} />
                   </button>
                   <button
                     onClick={clearCanvas}
-                    className="p-2 text-gray-500 hover:text-gray-700"
+                    className={styles.canvasActionButton}
                     title="Clear"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className={styles.canvasActionIcon} />
                   </button>
                   <button
                     onClick={downloadCanvas}
-                    className="p-2 text-gray-500 hover:text-gray-700"
+                    className={styles.canvasActionButton}
                     title="Download"
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className={styles.canvasActionIcon} />
                   </button>
                 </div>
               </div>
 
               {/* Drawing Tools */}
-              <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className={styles.drawingTools}>
                 <button
                   onClick={() => setCurrentTool('pen')}
-                  className={`p-2 rounded ${currentTool === 'pen' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+                  className={`${styles.toolButton} ${currentTool === 'pen' ? styles.toolButtonActive : styles.toolButtonInactive}`}
                 >
-                  <Pen className="w-4 h-4" />
+                  <Pen className={styles.toolIcon} />
                 </button>
                 <button
                   onClick={() => setCurrentTool('eraser')}
-                  className={`p-2 rounded ${currentTool === 'eraser' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+                  className={`${styles.toolButton} ${currentTool === 'eraser' ? styles.toolButtonActive : styles.toolButtonInactive}`}
                 >
-                  <Eraser className="w-4 h-4" />
+                  <Eraser className={styles.toolIcon} />
                 </button>
-                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <div className={styles.toolSeparator}></div>
                 <input
                   type="color"
                   value={drawingColor}
                   onChange={(e) => setDrawingColor(e.target.value)}
-                  className="w-8 h-8 rounded border"
+                  className={styles.colorPicker}
                 />
                 <input
                   type="range"
@@ -692,17 +756,16 @@ const StudentLessonView1 = () => {
                   max="20"
                   value={brushSize}
                   onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                  className="w-20"
+                  className={styles.brushSlider}
                 />
-                <span className="text-sm text-gray-600">{brushSize}px</span>
+                <span className={styles.brushSize}>{brushSize}px</span>
               </div>
 
               {/* Canvas */}
-              <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <div className={styles.canvasWrapper}>
                 <canvas
                   ref={canvasRef}
-                  className="block max-w-full h-auto cursor-crosshair"
-                  style={{ width: '100%', height: '400px' }}
+                  className={styles.canvas}
                 />
               </div>
             </div>
@@ -711,24 +774,24 @@ const StudentLessonView1 = () => {
 
         {/* Chat History */}
         {agentMessages.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Conversation</h3>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className={styles.chatCard}>
+            <h3 className={styles.chatTitle}>Conversation</h3>
+            <div className={styles.chatMessages}>
               {agentMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`p-4 rounded-lg ${
+                  className={`${styles.chatMessage} ${
                     msg.type === 'user'
-                      ? 'bg-indigo-600 text-white ml-12'
+                      ? styles.chatMessageUser
                       : msg.type === 'system'
-                      ? 'bg-blue-50 text-blue-800'
+                      ? styles.chatMessageSystem
                       : msg.type === 'error'
-                      ? 'bg-red-50 text-red-800'
-                      : 'bg-gray-50 text-gray-800 mr-12'
+                      ? styles.chatMessageError
+                      : styles.chatMessageAgent
                   }`}
                 >
-                  <div className="font-medium">{msg.content}</div>
-                  <div className="text-xs opacity-70 mt-1">
+                  <div className={styles.chatMessageContent}>{msg.content}</div>
+                  <div className={styles.chatMessageTime}>
                     {msg.timestamp.toLocaleTimeString()}
                   </div>
                 </div>
@@ -738,27 +801,27 @@ const StudentLessonView1 = () => {
         )}
 
         {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-          <div className="flex justify-around py-2">
-            <button className="flex flex-col items-center gap-1 px-4 py-2 text-indigo-600">
-              <Home className="w-5 h-5" />
-              <span className="text-xs">Home</span>
+        <div className={styles.bottomNav}>
+          <div className={styles.bottomNavContent}>
+            <button className={styles.bottomNavButtonActive}>
+              <Home className={styles.bottomNavIcon} />
+              <span className={styles.bottomNavLabel}>Home</span>
             </button>
-            <button className="flex flex-col items-center gap-1 px-4 py-2 text-gray-500">
-              <GraduationCap className="w-5 h-5" />
-              <span className="text-xs">Courses</span>
+            <button className={styles.bottomNavButton}>
+              <GraduationCap className={styles.bottomNavIcon} />
+              <span className={styles.bottomNavLabel}>Courses</span>
             </button>
-            <button className="flex flex-col items-center gap-1 px-4 py-2 text-gray-500">
-              <TrendingUp className="w-5 h-5" />
-              <span className="text-xs">Progress</span>
+            <button className={styles.bottomNavButton}>
+              <TrendingUp className={styles.bottomNavIcon} />
+              <span className={styles.bottomNavLabel}>Progress</span>
             </button>
-            <button className="flex flex-col items-center gap-1 px-4 py-2 text-gray-500">
-              <FileText className="w-5 h-5" />
-              <span className="text-xs">Resources</span>
+            <button className={styles.bottomNavButton}>
+              <FileText className={styles.bottomNavIcon} />
+              <span className={styles.bottomNavLabel}>Resources</span>
             </button>
-            <button className="flex flex-col items-center gap-1 px-4 py-2 text-gray-500">
-              <Settings className="w-5 h-5" />
-              <span className="text-xs">Settings</span>
+            <button className={styles.bottomNavButton}>
+              <Settings className={styles.bottomNavIcon} />
+              <span className={styles.bottomNavLabel}>Settings</span>
             </button>
           </div>
         </div>

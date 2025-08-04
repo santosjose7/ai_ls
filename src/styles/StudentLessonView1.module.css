@@ -1,0 +1,737 @@
+/* Container */
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+}
+
+/* Header */
+.header {
+  background: white;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.headerContent {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.headerTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.headerIcon {
+  width: 2rem;
+  height: 2rem;
+  color: #4f46e5;
+}
+
+.headerTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Main */
+.main {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Common */
+.section {
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+/* Student Input */
+.studentInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.inputIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+}
+
+.studentInput {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.studentInput:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #4f46e5;
+  border-color: transparent;
+}
+
+/* File Upload */
+.hiddenInput {
+  display: none;
+}
+
+.uploadArea {
+  display: block;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 2px dashed #d1d5db;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.uploadArea:hover {
+  border-color: #818cf8;
+}
+
+.uploadContent {
+  padding: 2rem;
+  text-align: center;
+}
+
+.uploadIcon {
+  width: 3rem;
+  height: 3rem;
+  color: #9ca3af;
+  margin: 0 auto 1rem;
+}
+
+.uploadTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.uploadDescription {
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.uploadLimit {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+/* File Info */
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.fileIcon {
+  width: 2rem;
+  height: 2rem;
+  color: #4f46e5;
+}
+
+.fileDetails {
+  flex: 1;
+}
+
+.fileName {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.fileSize {
+  color: #6b7280;
+}
+
+.removeButton {
+  padding: 0.5rem;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.removeButton:hover {
+  color: #ef4444;
+}
+
+.removeIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Processing Status */
+.processingStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #2563eb;
+}
+
+.processingIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  animation: spin 1s linear infinite;
+}
+
+.successStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #059669;
+}
+
+.successIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Grid Layout */
+.gridLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .gridLayout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Voice Interface */
+.voiceCard {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.voiceHeader {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.voiceTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.voiceDescription {
+  color: #6b7280;
+}
+
+/* Messages */
+.errorMessage {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.errorIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #ef4444;
+}
+
+.errorText {
+  color: #b91c1c;
+}
+
+.successMessage {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.successMessageIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #059669;
+}
+
+.successText {
+  color: #15803d;
+}
+
+/* Spectrum Visualizer */
+.spectrumWrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.spectrumContainer {
+  position: relative;
+  width: 20rem;
+  height: 20rem;
+}
+
+.spectrumBar {
+  position: absolute;
+  width: 3px;
+  height: 20px;
+  transform-origin: 50% 130px;
+  border-radius: 2px;
+  opacity: 0.3;
+  transition: all 0.3s ease;
+}
+
+.spectrumBar.connecting {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.spectrumBar.listening {
+  opacity: 0.8;
+  animation: audioWave 2s ease-in-out infinite;
+}
+
+.spectrumCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spectrumButton {
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  border: none;
+  cursor: pointer;
+}
+
+.spectrumButton:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.spectrumButtonActive {
+  background: #ef4444;
+  color: white;
+}
+
+.spectrumButtonActive:hover {
+  background: #dc2626;
+}
+
+.spectrumButtonInactive {
+  background: #22c55e;
+  color: white;
+}
+
+.spectrumButtonInactive:hover {
+  background: #16a34a;
+}
+
+.spectrumButtonIcon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.spectrumButtonIconSpin {
+  width: 2rem;
+  height: 2rem;
+  animation: spin 1s linear infinite;
+}
+
+/* Text Input */
+.textInputWrapper {
+  margin-bottom: 1.5rem;
+}
+
+.textInput {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.textInput:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #4f46e5;
+  border-color: transparent;
+}
+
+/* Canvas Toggle */
+.canvasToggleWrapper {
+  text-align: center;
+}
+
+.canvasToggleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.canvasToggleButton:hover {
+  background: #4338ca;
+}
+
+.canvasToggleIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Canvas Section */
+.canvasCard {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.canvasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.canvasTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.canvasActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.canvasActionButton {
+  padding: 0.5rem;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.canvasActionButton:hover {
+  color: #374151;
+}
+
+.canvasActionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.canvasActionIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Drawing Tools */
+.drawingTools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.toolButton {
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolButtonActive {
+  background: #4f46e5;
+  color: white;
+}
+
+.toolButtonInactive {
+  color: #6b7280;
+  background: transparent;
+}
+
+.toolButtonInactive:hover {
+  background: #e5e7eb;
+}
+
+.toolIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.toolSeparator {
+  width: 1px;
+  height: 1.5rem;
+  background: #d1d5db;
+  margin: 0 0.5rem;
+}
+
+.colorPicker {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.brushSlider {
+  width: 5rem;
+}
+
+.brushSize {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Canvas */
+.canvasWrapper {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: crosshair;
+  width: 100%;
+  height: 400px;
+}
+
+/* Chat */
+.chatCard {
+  margin-top: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.chatTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.chatMessages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.chatMessage {
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.chatMessageUser {
+  background: #4f46e5;
+  color: white;
+  margin-left: 3rem;
+  align-self: flex-end;
+}
+
+.chatMessageSystem {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.chatMessageError {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.chatMessageAgent {
+  background: #f9fafb;
+  color: #1f2937;
+  margin-right: 3rem;
+  align-self: flex-start;
+}
+
+.chatMessageContent {
+  font-weight: 500;
+}
+
+.chatMessageTime {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+/* Bottom Navigation */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.bottomNavContent {
+  display: flex;
+  justify-content: space-around;
+  padding: 0.5rem 0;
+}
+
+.bottomNavButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.bottomNavButton:hover {
+  color: #374151;
+}
+
+.bottomNavButtonActive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  color: #4f46e5;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.bottomNavIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.bottomNavLabel {
+  font-size: 0.75rem;
+}
+
+/* Animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: rotate(var(--rotation, 0deg)) translateY(-130px) scaleY(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(var(--rotation, 0deg)) translateY(-130px) scaleY(1.5);
+  }
+}
+
+@keyframes audioWave {
+  0%, 100% {
+    opacity: 0.4;
+    transform: rotate(var(--rotation, 0deg)) translateY(-130px) scaleY(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(var(--rotation, 0deg)) translateY(-130px) scaleY(1.2);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .main {
+    padding: 1rem;
+    padding-bottom: 5rem; /* Account for bottom nav */
+  }
+  
+  .voiceCard {
+    padding: 1.5rem;
+  }
+  
+  .spectrumContainer {
+    width: 16rem;
+    height: 16rem;
+  }
+  
+  .spectrumButton {
+    width: 5rem;
+    height: 5rem;
+  }
+  
+  .canvasCard {
+    padding: 1rem;
+  }
+  
+  .drawingTools {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .canvas {
+    height: 300px;
+  }
+  
+  .chatMessageUser {
+    margin-left: 1rem;
+  }
+  
+  .chatMessageAgent {
+    margin-right: 1rem;
+  }
+}

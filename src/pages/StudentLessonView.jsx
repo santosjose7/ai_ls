@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useConversation } from '@elevenlabs/react';
-import '../styles/StudentLessonView.css';
+import '../styles/StudentLessonView1.css';
 
 import {
   BookOpen,
