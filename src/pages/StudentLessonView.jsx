@@ -996,8 +996,9 @@ const StudentLessonView = () => {
         .main-content {
           display: flex;
           gap: 20px;
-          height: calc(100vh - 120px);
+          height: 98vh;
           transition: all 0.3s ease;
+          width: 99vh;
         }
 
         .control-panel {
@@ -1506,7 +1507,8 @@ const StudentLessonView = () => {
         @media (max-width: 768px) {
           .main-content {
             flex-direction: column;
-            height: auto;
+            height: 98vh;
+            width: 98vw
           }
 
           .control-panel {
