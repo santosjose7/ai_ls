@@ -394,8 +394,8 @@ body {
 
 .spectrum-circle {
   position: relative;
-  width: 280px;
-  height: 280px;
+  width: 180px;
+  height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -406,7 +406,7 @@ body {
 .spectrum-bar {
   position: absolute;
   width: 3px;
-  height: 20px;
+  height: 70px;
   border-radius: 2px;
   transform-origin: bottom center;
   transition: all 0.3s ease;
