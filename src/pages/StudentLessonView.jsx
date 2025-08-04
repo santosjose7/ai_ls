@@ -50,24 +50,6 @@ const StudentLessonView = () => {
   const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
 
-
-  const [showBottomNav, setShowBottomNav] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      const scrolled = window.scrollY;
-
-      if (Math.ceil(scrolled) >= scrollable) {
-        setShowBottomNav(true);
-      } else {
-        setShowBottomNav(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   // Visual content rendering functions
   const renderEquation = (content) => {
     return (
@@ -986,8 +968,8 @@ const StudentLessonView = () => {
           )}
         </div>
 
-         {/* Bottom Navigation Bar */}
-        <div className={`bottom-navigation ${showBottomNav ? 'show' : ''}`}>
+        {/* Bottom nav */}
+        <div className="bottom-navigation">
           <button className="nav-item active"><Home size={20} /><span>Home</span></button>
           <button className="nav-item"><GraduationCap size={20} /><span>Courses</span></button>
           <button className="nav-item"><TrendingUp size={20} /><span>Progress</span></button>
