@@ -9,7 +9,7 @@ import {
 import styles from '../styles/StudentLessonView1.module.css';
 
 const StudentLessonView1 = () => {
-  const API_BASE = 'http://localhost:5000'; // Since we can't use import.meta.env
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   // Local state
   const [studentName, setStudentName] = useState('');
