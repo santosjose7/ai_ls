@@ -140,8 +140,8 @@ body {
 }
 
 .input-section{
-  display: grid;
-  grid-template-columns: 2fr;
+  display: flex;
+  flex-direction: row;
   
 }
 .student-input-container {
