@@ -6,7 +6,7 @@ import {
   Square, Circle, Triangle, Pen, Type, Eraser, Undo, Redo
 } from 'lucide-react';
 
-import '../styles/StudentLessonView1.module.css';
+import styles from '../styles/StudentLessonView1.module.css';
 
 const StudentLessonView1 = () => {
   const API_BASE = 'http://localhost:5000'; // Since we can't use import.meta.env
