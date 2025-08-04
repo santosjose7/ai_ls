@@ -124,7 +124,7 @@ body {
 .container-lessons-page {
   max-width: 1400px;
   
-  padding: 1rem 2rem 120px; /* Bottom padding for navigation */
+  padding: 1rem 2rem 1rem; /* Bottom padding for navigation */
   position: relative;
   
 }
