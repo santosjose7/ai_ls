@@ -349,7 +349,7 @@ const StudentLessonView = () => {
 
       await conversation.startSession({
         signedUrl,
-        // You can optionally pass initial variables here
+        
         // variables: { student_name: studentName.trim() }
       });
 
