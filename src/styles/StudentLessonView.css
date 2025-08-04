@@ -415,25 +415,25 @@ body {
 
 /* Default state - gentle pulse */
 .spectrum-bar {
-  animation: gentlePulse 3s ease-in-out infinite;
+  animation: gentlePulse 6s ease-in-out infinite;
 }
 
 /* Connecting state - wave effect */
 .spectrum-bar.connecting {
   animation: connectingWave 1.5s ease-in-out infinite;
-  height: 25px;
+  height: 125px;
 }
 
 /* Speaking state - active pulsing */
 .spectrum-bar.speaking {
   animation: speakingPulse 0.5s ease-in-out infinite;
-  height: 30px;
+  height: 160px;
 }
 
 /* Listening state - ready indicator */
 .spectrum-bar.listening {
   animation: listeningGlow 2s ease-in-out infinite;
-  height: 23px;
+  height: 180px;
   opacity: 1;
 }
 
