@@ -998,7 +998,7 @@ const StudentLessonView = () => {
           gap: 20px;
           height: 98vh;
           transition: all 0.3s ease;
-          width: 99vh;
+          width: 99vw;
         }
 
         .control-panel {
