@@ -401,14 +401,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 21rem;
 }
 
 /* Spectrum Bars */
 .spectrum-bar {
   position: absolute;
   width: 3px;
-  height: 20px;
+  height: 30px;
   border-radius: 2px;
   transform-origin: bottom center;
   transition: all 0.3s ease;
@@ -766,8 +766,8 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   background: radial-gradient(circle, transparent 40%, rgba(59, 130, 246, 0.1) 70%);
   border-radius: 50%;
   z-index: 1;
