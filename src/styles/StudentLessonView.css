@@ -142,13 +142,14 @@ body {
 .input-section{
   display: flex;
   flex-direction: row;
+  gap: 10px;
   
 }
 .student-input-container {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 0.3rem;
   margin-bottom: 10px;
   box-shadow: 0 4px 12px var(--shadow);
 }
@@ -156,6 +157,7 @@ body {
 .input-group {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
@@ -243,7 +245,7 @@ body {
 
 .file-info {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 10px;
 }
 
 .uploaded-file-info {
@@ -253,9 +255,9 @@ body {
 .file-details {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
   background: var(--background);
-  padding: 1rem;
+  padding: 0.5rem;
   border-radius: 12px;
   border: 1px solid var(--border);
 }
@@ -271,21 +273,21 @@ body {
 
 .file-info h4 {
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   margin-bottom: 0.25rem;
 }
 
 .file-info p {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 10px;
 }
 
 .remove-file-btn {
   background: var(--accent-red);
   color: white;
   border: none;
-  padding: 0.5rem;
+  padding: 0.2rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -301,10 +303,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
-  padding: 0.75rem;
+  margin-top: 0.3rem;
+  padding: 0.5rem;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 500;
 }
 
