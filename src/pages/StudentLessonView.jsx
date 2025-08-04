@@ -1004,6 +1004,7 @@ const StudentLessonView = () => {
           flex: 1;
           min-width: 400px;
           overflow-y: auto;
+          margin-left: -30px;
         }
 
         .visual-panel {
