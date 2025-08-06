@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import mermaid from 'mermaid';
+mermaid.initialize({ startOnLoad: false });
 import '../styles/StudentLessonView.css';
 
 import {
@@ -28,6 +30,7 @@ import {
 const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
+  
   // Local state
   const [studentName, setStudentName] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -152,25 +155,39 @@ const renderEquation = (content) => {
     );
   };
 
-  const renderDiagram = (content) => {
-    return (
-      <div className="visual-diagram">
-        <h4>{content.title}</h4>
-        <div className="diagram-container">
-          {/* This will be populated with Mermaid or D3 content */}
-          <div className="diagram-placeholder">
-            <p>Diagram: {content.description}</p>
-            {content.mermaidCode && (
-              <pre className="mermaid-code">{content.mermaidCode}</pre>
-            )}
-          </div>
-        </div>
-        {content.explanation && (
-          <p className="diagram-explanation">{content.explanation}</p>
-        )}
+const renderDiagram = (content) => {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (content.mermaidCode && containerRef.current) {
+      try {
+        // Clear existing content
+        containerRef.current.innerHTML = '';
+        const id = `mermaid-${content.id}`;
+
+        mermaid.render(id, content.mermaidCode, (svgCode) => {
+          containerRef.current.innerHTML = svgCode;
+        });
+      } catch (e) {
+        containerRef.current.innerHTML = `<div style="color:red;">Error rendering Mermaid diagram: ${e.message}</div>`;
+        console.error('❌ Mermaid render error:', e);
+      }
+    }
+  }, [content]);
+
+  return (
+    <div className="visual-diagram">
+      <h4>{content.title}</h4>
+      <div className="diagram-container">
+        <div className="diagram-render" ref={containerRef} />
+        {content.description && <p>{content.description}</p>}
       </div>
-    );
-  };
+      {content.explanation && (
+        <p className="diagram-explanation">{content.explanation}</p>
+      )}
+    </div>
+  );
+};
 
   const renderStepByStep = (content) => {
     return (
@@ -529,38 +546,39 @@ const clientTools = useMemo(() => ({
     }
   },
 
-  // Simple diagram display - takes title and description
-  displayDiagram: async ({ title, description }) => {
-    try {
-      console.log('🎯 Agent calling displayDiagram with:', { title, description });
-      
-      if (!title && !description) {
-        console.error('❌ displayDiagram: missing title or description');
-        return { success: false, message: "Missing title or description parameter" };
-      }
-      
-      const content = {
-        id: Date.now(),
-        type: 'diagram',
-        title: title || 'Diagram',
-        description: description || '',
-        explanation: '',
-        timestamp: new Date()
-      };
-      
-      console.log('✅ Setting diagram content:', content);
-      setVisualContent(content);
-      setVisualHistory(prev => [...prev.slice(-9), content]);
-      
-      return {
-        success: true,
-        message: `✅ Diagram displayed: ${title || 'Diagram'}`
-      };
-    } catch (error) {
-      console.error('❌ displayDiagram error:', error);
-      return { success: false, message: `Error: ${error.message}` };
+displayDiagram: async ({ title, description, mermaidCode }) => {
+  try {
+    console.log('🎯 Agent calling displayDiagram with:', { title, description, mermaidCode });
+
+    if (!title && !description && !mermaidCode) {
+      console.error('❌ displayDiagram: missing all parameters');
+      return { success: false, message: "Missing parameters" };
     }
-  },
+
+    const content = {
+      id: Date.now(),
+      type: 'diagram',
+      title: title || 'Diagram',
+      description: description || '',
+      mermaidCode: mermaidCode || '',
+      explanation: '',
+      timestamp: new Date()
+    };
+
+    console.log('✅ Setting diagram content:', content);
+    setVisualContent(content);
+    setVisualHistory(prev => [...prev.slice(-9), content]);
+
+    return {
+      success: true,
+      message: `✅ Diagram displayed: ${title || 'Diagram'}`
+    };
+  } catch (error) {
+    console.error('❌ displayDiagram error:', error);
+    return { success: false, message: `Error: ${error.message}` };
+  }
+},
+
 
   // Simple key points display - takes a title and comma-separated points
   displayKeyPoints: async ({ title, points }) => {
@@ -614,9 +632,9 @@ const clientTools = useMemo(() => ({
   },
 
   // Simple analogy display - takes concept and comparison
-  displayAnalogy: async ({ concept, comparison }) => {
+  displayAnalogy: async ({ title, concept, comparison }) => {
     try {
-      console.log('🎯 Agent calling displayAnalogy with:', { concept, comparison });
+      console.log('🎯 Agent calling displayAnalogy with:', { title, concept, comparison });
       
       if (!concept || !comparison) {
         console.error('❌ displayAnalogy: missing concept or comparison');
@@ -626,7 +644,7 @@ const clientTools = useMemo(() => ({
       const content = {
         id: Date.now(),
         type: 'analogy',
-        title: 'Learning Analogy',
+        title: title,
         concept: concept,
         analogy: comparison,
         explanation: `Think of ${concept} like ${comparison}`,
@@ -647,126 +665,124 @@ const clientTools = useMemo(() => ({
     }
   },
 
-  // Simple step-by-step display - takes a title and comma-separated steps
-  displaySteps: async ({ title, steps }) => {
-    try {
-      console.log('🎯 Agent calling displaySteps with:', { title, steps });
-      
-      if (!steps) {
-        console.error('❌ displaySteps: missing steps parameter');
-        return { success: false, message: "Missing steps parameter" };
-      }
-      
-      // Handle both string (comma-separated) and array formats
-      let stepsArray;
-      if (typeof steps === 'string') {
-        stepsArray = steps.split(',').map((step, index) => ({
-          title: `Step ${index + 1}`,
-          description: step.trim(),
-          visual: null
-        }));
-      } else if (Array.isArray(steps)) {
-        stepsArray = steps.map((step, index) => 
-          typeof step === 'string' 
-            ? { title: `Step ${index + 1}`, description: step, visual: null }
-            : step
-        );
-      } else {
-        console.error('❌ displaySteps: steps must be string or array');
-        return { success: false, message: "Steps must be a string or array" };
-      }
-      
-      const content = {
-        id: Date.now(),
-        type: 'steps',
-        title: title || 'Step-by-Step Process',
-        steps: stepsArray,
-        currentStep: 0,
-        timestamp: new Date()
-      };
-      
-      console.log('✅ Setting steps content:', content);
-      setVisualContent(content);
-      setVisualHistory(prev => [...prev.slice(-9), content]);
-      
-      return {
-        success: true,
-        message: `✅ Steps displayed: ${title || 'Process'} (${stepsArray.length} steps)`
-      };
-    } catch (error) {
-      console.error('❌ displaySteps error:', error);
-      return { success: false, message: `Error: ${error.message}` };
-    }
-  },
+    displaySteps: async ({ title, steps }) => {
+      try {
+        console.log('🎯 Agent calling displaySteps with:', { title, steps });
 
-  // Simple step navigation
-  nextStep: async () => {
-    try {
-      console.log('🎯 Agent calling nextStep');
-      
-      if (!visualContent || visualContent.type !== 'steps') {
-        console.error('❌ nextStep: no steps currently displayed');
-        return { success: false, message: "No steps currently displayed" };
-      }
-      
-      const currentStep = visualContent.currentStep;
-      const maxStep = visualContent.steps.length - 1;
-      const newStep = Math.min(currentStep + 1, maxStep);
-      
-      const updatedContent = {
-        ...visualContent,
-        currentStep: newStep,
-        timestamp: new Date()
-      };
-      
-      console.log('✅ Moving to next step:', newStep);
-      setVisualContent(updatedContent);
-      
-      return {
-        success: true,
-        current_step: newStep + 1,
-        total_steps: visualContent.steps.length,
-        message: `✅ Moved to step ${newStep + 1} of ${visualContent.steps.length}`
-      };
-    } catch (error) {
-      console.error('❌ nextStep error:', error);
-      return { success: false, message: `Error: ${error.message}` };
-    }
-  },
+        if (!steps) {
+          console.error('❌ displaySteps: missing steps parameter');
+          return { success: false, message: "Missing steps parameter" };
+        }
 
-  // Simple step navigation
-  previousStep: async () => {
-    try {
-      console.log('🎯 Agent calling previousStep');
-      
-      if (!visualContent || visualContent.type !== 'steps') {
-        console.error('❌ previousStep: no steps currently displayed');
-        return { success: false, message: "No steps currently displayed" };
+        let stepsArray;
+        if (typeof steps === 'string') {
+          stepsArray = steps.split(',').map((step, index) => ({
+            title: `Step ${index + 1}`,
+            description: step.trim(),
+            visual: null
+          }));
+        } else if (Array.isArray(steps)) {
+          stepsArray = steps.map((step, index) =>
+            typeof step === 'string'
+              ? { title: `Step ${index + 1}`, description: step, visual: null }
+              : step
+          );
+        } else {
+          console.error('❌ displaySteps: steps must be string or array');
+          return { success: false, message: "Steps must be a string or array" };
+        }
+
+        const content = {
+          id: Date.now(),
+          type: 'steps',
+          title: title || 'Step-by-Step Process',
+          steps: stepsArray,
+          currentStep: 0,
+          timestamp: new Date()
+        };
+
+        console.log('✅ Setting steps content:', content);
+        setVisualContent(content);
+        setVisualHistory(prev => [...prev.slice(-9), content]);
+
+        return {
+          success: true,
+          message: `✅ Steps displayed: ${title || 'Process'} (${stepsArray.length} steps)`
+        };
+      } catch (error) {
+        console.error('❌ displaySteps error:', error);
+        return { success: false, message: `Error: ${error.message}` };
       }
-      
-      const currentStep = visualContent.currentStep;
-      const newStep = Math.max(currentStep - 1, 0);
-      
-      const updatedContent = {
-        ...visualContent,
-        currentStep: newStep,
-        timestamp: new Date()
-      };
-      
-      console.log('✅ Moving to previous step:', newStep);
-      setVisualContent(updatedContent);
-      
-      return {
-        success: true,
-        current_step: newStep + 1,
-        total_steps: visualContent.steps.length,
-        message: `✅ Moved to step ${newStep + 1} of ${visualContent.steps.length}`
-      };
-    } catch (error) {
-      console.error('❌ previousStep error:', error);
-      return { success: false, message: `Error: ${error.message}` };
-    }
-  },
+    },
+
+        nextStep: async () => {
+      try {
+        console.log('🎯 Agent calling nextStep');
+
+        if (!visualContent || visualContent.type !== 'steps') {
+          console.error('❌ nextStep: no steps currently displayed');
+          return { success: false, message: "No steps currently displayed" };
+        }
+
+        const currentStep = visualContent.currentStep;
+        const maxStep = visualContent.steps.length - 1;
+        const newStep = Math.min(currentStep + 1, maxStep);
+
+        const updatedContent = {
+          ...visualContent,
+          currentStep: newStep,
+          timestamp: new Date()
+        };
+
+        console.log('✅ Moving to next step:', newStep);
+        setVisualContent(updatedContent);
+
+        return {
+          success: true,
+          current_step: newStep + 1,
+          total_steps: visualContent.steps.length,
+          message: `✅ Moved to step ${newStep + 1} of ${visualContent.steps.length}`
+        };
+      } catch (error) {
+        console.error('❌ nextStep error:', error);
+        return { success: false, message: `Error: ${error.message}` };
+      }
+    },
+
+    previousStep: async () => {
+      try {
+        console.log('🎯 Agent calling previousStep');
+
+        if (!visualContent || visualContent.type !== 'steps') {
+          console.error('❌ previousStep: no steps currently displayed');
+          return { success: false, message: "No steps currently displayed" };
+        }
+
+        const currentStep = visualContent.currentStep;
+        const newStep = Math.max(currentStep - 1, 0);
+
+        const updatedContent = {
+          ...visualContent,
+          currentStep: newStep,
+          timestamp: new Date()
+        };
+
+        console.log('✅ Moving to previous step:', newStep);
+        setVisualContent(updatedContent);
+
+        return {
+          success: true,
+          current_step: newStep + 1,
+          total_steps: visualContent.steps.length,
+          message: `✅ Moved to step ${newStep + 1} of ${visualContent.steps.length}`
+        };
+      } catch (error) {
+        console.error('❌ previousStep error:', error);
+        return { success: false, message: `Error: ${error.message}` };
+      }
+    },
+  
+
 
   // Clear all visuals
   clearVisuals: async () => {
