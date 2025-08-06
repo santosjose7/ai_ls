@@ -646,7 +646,7 @@ displayDiagram: async ({ title, description, mermaidCode }) => {
         type: 'analogy',
         title: title,
         concept: concept,
-        analogy: comparison,
+        comparison: comparison,
         explanation: explanation,
         timestamp: new Date()
       };
