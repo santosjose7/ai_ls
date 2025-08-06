@@ -44,7 +44,7 @@ const StudentLessonView = () => {
   const [isVisualPanelVisible, setIsVisualPanelVisible] = useState(true);
   const [visualPanelSize, setVisualPanelSize] = useState('normal'); // 'normal', 'maximized'
   const [visualLayout, setVisualLayout] = useState('side-by-side'); // 'side-by-side', 'overlay', 'fullscreen'
-  const renderVisualContent = useState(true);
+  
 
   const maxConnectionAttempts = 3;
   const isConnectingRef = useRef(false);
@@ -234,7 +234,7 @@ const StudentLessonView = () => {
     );
   };
 
-  const updatedRenderVisualContent = () => {
+  const renderVisualContent = () => {
   if (!visualContent) {
     return (
       <div className="visual-placeholder">
