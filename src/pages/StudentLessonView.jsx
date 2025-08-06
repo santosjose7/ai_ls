@@ -256,7 +256,7 @@ const renderDiagram = (content) => {
             <div className="analogy-connector">↔</div>
             <div className="analogy-side">
               <h5>Like</h5>
-              <p>{content.analogy}</p>
+              <p>{content.comparison}</p>
             </div>
           </div>
           <div className="analogy-explanation">
@@ -632,11 +632,11 @@ displayDiagram: async ({ title, description, mermaidCode }) => {
   },
 
   // Simple analogy display - takes concept and comparison
-  displayAnalogy: async ({ title, concept, comparison }) => {
+  displayAnalogy: async ({ title, concept, comparison, explanation }) => {
     try {
-      console.log('🎯 Agent calling displayAnalogy with:', { title, concept, comparison });
+      console.log('🎯 Agent calling displayAnalogy with:', { title, concept, comparison,explanation });
       
-      if (!concept || !comparison) {
+      if (!concept || !comparison || !explanation) {
         console.error('❌ displayAnalogy: missing concept or comparison');
         return { success: false, message: "Missing concept or comparison parameter" };
       }
@@ -647,7 +647,7 @@ displayDiagram: async ({ title, description, mermaidCode }) => {
         title: title,
         concept: concept,
         analogy: comparison,
-        explanation: `Think of ${concept} like ${comparison}`,
+        explanation: explanation,
         timestamp: new Date()
       };
       
