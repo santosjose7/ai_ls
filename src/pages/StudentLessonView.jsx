@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useConversation } from '@elevenlabs/react';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import '../styles/StudentLessonView.css';
 
 import {
@@ -52,21 +54,35 @@ const StudentLessonView = () => {
   const fileInputRef = useRef(null);
 
   // Visual content rendering functions
-  const renderEquation = (content) => {
-    return (
-      <div className="visual-equation">
-        <h4>{content.title}</h4>
-        <div className="equation-container">
-          <div className="equation-latex" dangerouslySetInnerHTML={{ 
-            __html: content.latex 
-          }} />
-        </div>
-        {content.explanation && (
-          <p className="equation-explanation">{content.explanation}</p>
-        )}
+const renderEquation = (content) => {
+  let renderedLatex = '';
+
+  try {
+    renderedLatex = katex.renderToString(content.latex, {
+      throwOnError: false,
+      displayMode: true
+    });
+  } catch (e) {
+    console.error('❌ KaTeX rendering error:', e);
+    renderedLatex = `<span style="color:red;">Invalid LaTeX: ${content.latex}</span>`;
+  }
+
+  return (
+    <div className="visual-equation">
+      <h4>{content.title}</h4>
+      <div className="equation-container">
+        <div
+          className="equation-latex"
+          dangerouslySetInnerHTML={{ __html: renderedLatex }}
+        />
       </div>
-    );
-  };
+      {content.explanation && (
+        <p className="equation-explanation">{content.explanation}</p>
+      )}
+    </div>
+  );
+};
+
 
   const renderGeneratedEquation = (content) => {
   return (
@@ -357,7 +373,7 @@ const clientTools = useMemo(() => ({
     };
   },
 
-  displayEquation: async ({ text }) => {
+  displayEquation: async ({ title, latex }) => {
     try {
       console.log('🎯 Agent calling displayEquation with text:', text);
       
@@ -369,7 +385,7 @@ const clientTools = useMemo(() => ({
       const content = {
         id: Date.now(),
         type: 'equation',
-        title: 'Mathematical Expression',
+        title: '',
         latex: text,
         explanation: '',
         timestamp: new Date()
@@ -492,7 +508,7 @@ const clientTools = useMemo(() => ({
       const content = {
         id: Date.now(),
         type: 'image',
-        title: 'Visual Content',
+        title: '',
         url: url,
         caption: '',
         alt: 'Visual Content',
