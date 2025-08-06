@@ -158,7 +158,6 @@ const renderEquation = (content) => {
     );
   };
 
-  <RenderDiagram content={content} />
 
   const renderStepByStep = (content) => {
     return (
