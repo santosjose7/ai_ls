@@ -5,18 +5,28 @@ const RenderDiagram = ({ content }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (content.mermaidCode && containerRef.current) {
-      try {
-        containerRef.current.innerHTML = '';
-        const id = `mermaid-${content.id}`;
+    if (!content?.mermaidCode || !containerRef.current) return;
 
-        mermaid.render(id, content.mermaidCode, (svgCode) => {
-          containerRef.current.innerHTML = svgCode;
-        });
-      } catch (e) {
-        containerRef.current.innerHTML = `<div style="color:red;">Error rendering Mermaid diagram: ${e.message}</div>`;
-        console.error('❌ Mermaid render error:', e);
-      }
+    // Initialize Mermaid once
+    mermaid.initialize({ startOnLoad: false });
+
+    try {
+      // Clear any previous content
+      containerRef.current.innerHTML = '';
+
+      // Create a temporary div for rendering
+      const tempId = `mermaid-${content.id}`;
+      const tempDiv = document.createElement('div');
+      tempDiv.id = tempId;
+      tempDiv.className = 'mermaid';
+      tempDiv.textContent = content.mermaidCode;
+      containerRef.current.appendChild(tempDiv);
+
+      // Trigger Mermaid to render
+      mermaid.init(undefined, `#${tempId}`);
+    } catch (e) {
+      containerRef.current.innerHTML = `<div style="color:red;">Error rendering Mermaid diagram: ${e.message}</div>`;
+      console.error('❌ Mermaid render error:', e);
     }
   }, [content]);
 
