@@ -258,7 +258,7 @@ const renderEquation = (content) => {
     case 'image':
       return renderImage(visualContent);
     case 'diagram':
-      return renderDiagram(visualContent);
+      return RenderDiagram(visualContent);
     case 'steps':
       return renderStepByStep(visualContent);
     case 'main-points':
