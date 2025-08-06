@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import RenderDiagram from './RenderDiagram';
+
 import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false });
 import '../styles/StudentLessonView.css';
@@ -49,6 +51,7 @@ const StudentLessonView = () => {
   const [isVisualPanelVisible, setIsVisualPanelVisible] = useState(true);
   const [visualPanelSize, setVisualPanelSize] = useState('normal'); // 'normal', 'maximized'
   const [visualLayout, setVisualLayout] = useState('side-by-side'); // 'side-by-side', 'overlay', 'fullscreen'
+  
   
 
   const maxConnectionAttempts = 3;
