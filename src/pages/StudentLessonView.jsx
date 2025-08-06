@@ -254,11 +254,11 @@ const renderEquation = (content) => {
       return renderGeneratedEquation(visualContent);
     
     case 'equation':
-      return renderEquation(visualContent); // Your existing simple renderer
+      return renderEquation(visualContent);
     case 'image':
       return renderImage(visualContent);
     case 'diagram':
-      return RenderDiagram(visualContent);
+      return <RenderDiagram content={visualContent} />;
     case 'steps':
       return renderStepByStep(visualContent);
     case 'main-points':
