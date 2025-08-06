@@ -375,9 +375,9 @@ const clientTools = useMemo(() => ({
 
   displayEquation: async ({ title, latex }) => {
     try {
-      console.log('🎯 Agent calling displayEquation with text:', text);
+      console.log('🎯 Agent calling displayEquation with text:', latex);
       
-      if (!text) {
+      if (!latex) {
         console.error('❌ displayEquation: missing text parameter');
         return { success: false, message: "Missing text parameter" };
       }
@@ -385,8 +385,8 @@ const clientTools = useMemo(() => ({
       const content = {
         id: Date.now(),
         type: 'equation',
-        title: '',
-        latex: text,
+        title: 'equation',
+        latex: latex,
         explanation: '',
         timestamp: new Date()
       };
@@ -397,7 +397,7 @@ const clientTools = useMemo(() => ({
       
       return {
         success: true,
-        message: `✅ Equation displayed: ${text}`
+        message: `✅ Equation displayed: ${latex}`
       };
     } catch (error) {
       console.error('❌ displayEquation error:', error);
