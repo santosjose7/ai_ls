@@ -527,9 +527,7 @@ const clientTools = useMemo(() => ({
         id: Date.now(),
         type: 'diagram',
         title: title || 'Diagram',
-        diagramType: 'conceptual',
         description: description || '',
-        mermaidCode: '',
         explanation: '',
         timestamp: new Date()
       };
