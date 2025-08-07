@@ -3,7 +3,7 @@ import { useConversation } from '@elevenlabs/react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import RenderDiagram from './RenderDiagram';
-
+import RenderShapes from './RenderShapes';
 import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false });
 import '../styles/StudentLessonView.css';
@@ -259,6 +259,8 @@ const renderEquation = (content) => {
       return renderImage(visualContent);
     case 'diagram':
       return <RenderDiagram content={visualContent} />;
+    case 'shape-diagram':
+      return <RenderShapes content={visualContent} />;
     case 'steps':
       return renderStepByStep(visualContent);
     case 'main-points':

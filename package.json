@@ -14,6 +14,8 @@
     "@elevenlabs/react": "^0.4.2",
     "@elevenlabs/client": "^0.4.4",
     "katex": "0.16.22",
+    "konva": "9.3.22",
+    "react-konva": "19.0.7",
     "react-katex":"3.1.0",
     "react-latex":"2.0.0",
     "latex":"0.0.1",
