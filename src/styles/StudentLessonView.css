@@ -891,6 +891,9 @@ body {
   .messages-container {
     max-height: 300px;
   }
+  .visual-panel{
+    margin: 0 5px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -982,6 +985,9 @@ body {
   
   .messages-container {
     max-height: 250px;
+  }
+  .visual-panel{
+    margin: 0 5px;
   }
 }
 
