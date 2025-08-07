@@ -1435,7 +1435,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
           overflow: hidden;
           min-width: 400px;
           max-height: 80vh;
-          magin: 0 auto;
+          margin: 0 8px;
         }
 
         .visual-panel-header {
@@ -1545,6 +1545,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
           border-radius: 8px;
           padding: 20px;
           margin-bottom: 16px;
+          max-height: 400px;
         }
 
         .visual-image h4 {
