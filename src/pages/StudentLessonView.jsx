@@ -552,6 +552,42 @@ displayDiagram: async ({ title, description, mermaidCode }) => {
 },
 
 
+displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
+  try {
+    console.log('🎯 Agent calling displayShapes with:', { title, description, explanation, width, height, shapes });
+
+    if (!title || !shapes || !Array.isArray(shapes) || shapes.length === 0) {
+      console.error('❌ displayShapes: Missing required parameters (title or shapes)');
+      return { success: false, message: "Missing required parameters: title or shapes" };
+    }
+
+    const content = {
+      id: Date.now(),
+      type: 'shapes',
+      title,
+      description: description || '',
+      explanation: explanation || '',
+      width,
+      height,
+      shapes,
+      timestamp: new Date()
+    };
+
+    console.log('✅ Setting shapes content:', content);
+    setVisualContent(content);
+    setVisualHistory(prev => [...prev.slice(-9), content]);
+
+    return {
+      success: true,
+      message: `✅ Shapes displayed: ${title}`
+    };
+  } catch (error) {
+    console.error('❌ displayShapes error:', error);
+    return { success: false, message: `Error: ${error.message}` };
+  }
+},
+
+
   // Simple key points display - takes a title and comma-separated points
   displayKeyPoints: async ({ title, points }) => {
     try {
