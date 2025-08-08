@@ -18,7 +18,7 @@ const konvaComponents = {
 };
 
 const RenderShapes = ({ content }) => {
-  const { title, description, explanation, width = 600, height = 400, shapes = [] } = content;
+  const { title, explanation, width = 600, height = 400, shapes = [] } = content;
 
   return (
     <div className="visual-diagram">
@@ -33,7 +33,6 @@ const RenderShapes = ({ content }) => {
             })}
           </Layer>
         </Stage>
-        {description && <p>{description}</p>}
       </div>
       {explanation && <p className="diagram-explanation">{explanation}</p>}
     </div>

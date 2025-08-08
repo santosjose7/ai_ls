@@ -4,6 +4,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import RenderDiagram from './RenderDiagram';
 import RenderShapes from './RenderShapes';
+import AvatarContainer from './avatar/AvatarContainer';
 import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false });
 import '../styles/StudentLessonView.css';
@@ -1319,6 +1320,21 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
               </div>
             </div>
 
+            {/*avatar*/}
+            <div className="avatar-container">
+              <AvatarContainer 
+                isConnected={conversation.status === 'connected' || isSessionActive}
+                isSpeaking={conversation.isSpeaking}
+                isConnecting={isConnecting}
+                voiceError={voiceError}
+                studentName={studentName}
+                avatarUrl={import.meta.env.VITE_AVATAR_URL || "ready-player-me-url"}
+                onToggleVoiceAgent={toggleVoiceAgent}
+                onAvatarReady={() => console.log('Avatar ready!')}
+                onAvatarError={(error) => console.error('Avatar error:', error)}
+              />
+            </div>
+
             {/* Chat history */}
             {agentMessages.length > 0 && (
               <div className="chat-messages">
@@ -1435,7 +1451,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
           overflow: hidden;
           min-width: 400px;
           max-height: 80vh;
-          margin: 0 8px;
+          margin: 0 auto;
         }
 
         .visual-panel-header {
