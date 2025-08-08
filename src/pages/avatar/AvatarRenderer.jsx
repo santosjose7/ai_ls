@@ -28,6 +28,7 @@ const AvatarRenderer = forwardRef(({
   // Morph targets for lip sync
   const morphTargetsRef = useRef({});
   const lipSyncTimeoutRef = useRef(null);
+  const morphTargetSmoothingRef = useRef({});
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -52,8 +53,6 @@ const AvatarRenderer = forwardRef(({
 
     // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    scene.background.setHex(0x000000);
     scene.background = null; // Transparent background
     sceneRef.current = scene;
 
@@ -136,7 +135,7 @@ const AvatarRenderer = forwardRef(({
     try {
       console.log('🔄 Loading avatar from:', url);
 
-      // Dynamic import of GLTFLoader to reduce bundle size
+      // Dynamic import of GLTFLoader
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
       const loader = new GLTFLoader();
 
@@ -170,7 +169,7 @@ const AvatarRenderer = forwardRef(({
       avatar.scale.set(1, 1, 1);
       avatar.position.set(0, 0, 0);
 
-      // Enable shadows
+      // Enable shadows and optimize materials
       avatar.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = true;
@@ -179,6 +178,10 @@ const AvatarRenderer = forwardRef(({
           // Ensure materials are properly set up
           if (child.material) {
             child.material.side = THREE.FrontSide;
+            // Enable morph targets if available
+            if (child.morphTargetInfluences) {
+              child.material.morphTargets = true;
+            }
           }
         }
       });
@@ -227,24 +230,28 @@ const AvatarRenderer = forwardRef(({
       if (child.isMesh && child.morphTargetDictionary) {
         console.log('🎭 Found morph targets:', Object.keys(child.morphTargetDictionary));
         
-        // Common Ready Player Me viseme targets
+        // Enhanced Ready Player Me viseme mapping
         const visemeMapping = {
-          'A': ['viseme_aa', 'mouthOpen'],
-          'E': ['viseme_E', 'mouthSmile'],
-          'I': ['viseme_I', 'mouthFrown'],
-          'O': ['viseme_O', 'mouthRound'],
+          'A': ['viseme_aa', 'mouthOpen', 'jawOpen'],
+          'E': ['viseme_E', 'mouthSmile_L', 'mouthSmile_R'],
+          'I': ['viseme_I', 'mouthClose', 'mouthPress_L', 'mouthPress_R'],
+          'O': ['viseme_O', 'mouthFunnel', 'mouthRound'],
           'U': ['viseme_U', 'mouthPucker'],
-          'silence': ['mouthClose', 'viseme_sil']
+          'silence': ['mouthClose', 'viseme_sil'],
+          // Consonant mappings
+          'M': ['mouthClose', 'viseme_PP'],
+          'B': ['mouthClose', 'viseme_PP'],
+          'S': ['mouthSmile_L', 'mouthSmile_R', 'viseme_SS']
         };
 
         const foundTargets = {};
         Object.entries(visemeMapping).forEach(([phoneme, targets]) => {
-          targets.forEach(target => {
+          for (const target of targets) {
             if (child.morphTargetDictionary[target] !== undefined) {
               foundTargets[phoneme] = child.morphTargetDictionary[target];
-              return;
+              break;
             }
-          });
+          }
         });
 
         if (Object.keys(foundTargets).length > 0) {
@@ -252,46 +259,67 @@ const AvatarRenderer = forwardRef(({
             mesh: child,
             targets: foundTargets
           };
+          
+          // Initialize smoothing values
+          morphTargetSmoothingRef.current[child.uuid] = {};
+          Object.keys(foundTargets).forEach(phoneme => {
+            morphTargetSmoothingRef.current[child.uuid][phoneme] = 0;
+          });
+          
           console.log(`✅ Lip sync targets mapped for ${child.name}:`, foundTargets);
         }
       }
     });
   };
 
-  // Update mouth morph targets based on lip sync data
+  // Enhanced mouth morph targets update with smoothing
   const updateMouthMorphTargets = (lipSyncData) => {
     if (!lipSyncData || Object.keys(morphTargetsRef.current).length === 0) return;
 
-    Object.values(morphTargetsRef.current).forEach(({ mesh, targets }) => {
-      // Reset all morph targets
-      Object.values(targets).forEach(targetIndex => {
-        if (mesh.morphTargetInfluences && mesh.morphTargetInfluences[targetIndex] !== undefined) {
-          mesh.morphTargetInfluences[targetIndex] = 0;
+    const { phoneme, volume, intensity = 0.5 } = lipSyncData;
+    const targetIntensity = Math.max(0, Math.min(1, intensity * volume));
+
+    Object.entries(morphTargetsRef.current).forEach(([meshId, { mesh, targets }]) => {
+      if (!mesh.morphTargetInfluences) return;
+
+      const smoothing = morphTargetSmoothingRef.current[meshId];
+      
+      // Update all phoneme targets with smoothing
+      Object.entries(targets).forEach(([targetPhoneme, targetIndex]) => {
+        let targetValue = 0;
+        
+        if (targetPhoneme === phoneme && volume > 0.02) {
+          targetValue = targetIntensity;
+        } else if (targetPhoneme === 'silence' && volume <= 0.02) {
+          targetValue = 0.3; // Slight mouth closure for silence
+        }
+
+        // Apply smoothing
+        const currentValue = smoothing[targetPhoneme] || 0;
+        const smoothedValue = currentValue + (targetValue - currentValue) * 0.3;
+        smoothing[targetPhoneme] = smoothedValue;
+
+        // Apply to mesh
+        if (mesh.morphTargetInfluences[targetIndex] !== undefined) {
+          mesh.morphTargetInfluences[targetIndex] = smoothedValue;
         }
       });
-
-      // Apply new values based on lip sync data
-      if (lipSyncData.phoneme && targets[lipSyncData.phoneme] !== undefined) {
-        const targetIndex = targets[lipSyncData.phoneme];
-        const intensity = Math.max(0, Math.min(1, lipSyncData.intensity || 0.5));
-        
-        if (mesh.morphTargetInfluences && mesh.morphTargetInfluences[targetIndex] !== undefined) {
-          mesh.morphTargetInfluences[targetIndex] = intensity;
-        }
-      }
     });
 
-    // Auto-reset after a short delay if no new data comes in
+    // Auto-reset after silence
     if (lipSyncTimeoutRef.current) clearTimeout(lipSyncTimeoutRef.current);
     lipSyncTimeoutRef.current = setTimeout(() => {
-      Object.values(morphTargetsRef.current).forEach(({ mesh, targets }) => {
-        Object.values(targets).forEach(targetIndex => {
-          if (mesh.morphTargetInfluences && mesh.morphTargetInfluences[targetIndex] !== undefined) {
-            mesh.morphTargetInfluences[targetIndex] = 0;
+      Object.entries(morphTargetsRef.current).forEach(([meshId, { mesh, targets }]) => {
+        if (!mesh.morphTargetInfluences) return;
+        
+        Object.entries(targets).forEach(([targetPhoneme, targetIndex]) => {
+          if (targetPhoneme !== 'silence') {
+            const current = mesh.morphTargetInfluences[targetIndex] || 0;
+            mesh.morphTargetInfluences[targetIndex] = current * 0.9; // Gradual fade
           }
         });
       });
-    }, 200);
+    }, 100);
   };
 
   // Adjust camera position based on avatar size
@@ -302,31 +330,34 @@ const AvatarRenderer = forwardRef(({
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
 
-    // Position camera to frame the avatar nicely
+    // Position camera to frame the avatar nicely (focus on head/torso)
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = cameraRef.current.fov * (Math.PI / 180);
     let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
     
-    cameraZ *= 1.5; // Add some padding
-    cameraRef.current.position.set(0, center.y + size.y * 0.1, cameraZ);
-    cameraRef.current.lookAt(center.x, center.y + size.y * 0.1, center.z);
+    cameraZ *= 1.2; // Closer for better face visibility
+    const targetY = center.y + size.y * 0.2; // Focus on upper body/head
+    
+    cameraRef.current.position.set(0, targetY, cameraZ);
+    cameraRef.current.lookAt(center.x, targetY, center.z);
   };
 
-  // Play animation based on state
+  // Enhanced animation system
   const playAnimation = (animationType) => {
     if (!mixerRef.current || !animations) return;
 
     // Stop current animation
     if (currentAction) {
-      currentAction.fadeOut(0.3);
+      currentAction.fadeOut(0.5);
     }
 
-    // Map animation states to actual animation names
+    // Enhanced animation mapping
     const animationMap = {
-      'idle': ['Idle', 'idle', 'T-Pose', 'TPose'],
-      'listening': ['Listening', 'listening', 'Idle', 'idle'],
-      'speaking': ['Speaking', 'speaking', 'Talk', 'talk'],
-      'connecting': ['Wave', 'wave', 'Hello', 'hello', 'Idle']
+      'idle': ['Idle', 'idle', 'breathing', 'T-Pose', 'TPose'],
+      'listening': ['Listening', 'listening', 'attentive', 'Idle', 'idle'],
+      'speaking': ['Speaking', 'speaking', 'Talk', 'talk', 'gesture'],
+      'connecting': ['Wave', 'wave', 'Hello', 'hello', 'greeting', 'Idle'],
+      'error': ['Confused', 'confused', 'shrug', 'Idle']
     };
 
     const possibleAnimations = animationMap[animationType] || ['Idle'];
@@ -342,7 +373,8 @@ const AvatarRenderer = forwardRef(({
 
     if (actionToPlay) {
       actionToPlay.reset();
-      actionToPlay.fadeIn(0.3);
+      actionToPlay.fadeIn(0.5);
+      actionToPlay.setLoop(THREE.LoopRepeat);
       actionToPlay.play();
       setCurrentAction(actionToPlay);
       console.log(`🎭 Playing animation: ${animationType}`);
@@ -360,24 +392,32 @@ const AvatarRenderer = forwardRef(({
     }
   };
 
-  // Animation loop
+  // Enhanced animation loop with lip sync and subtle movements
   const animate = () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
 
+    const delta = clockRef.current.getDelta();
+    const elapsedTime = clockRef.current.elapsedTime;
+
     // Update animations
     if (mixerRef.current) {
-      const delta = clockRef.current.getDelta();
       mixerRef.current.update(delta);
     }
 
-    // Add subtle idle movements
-    if (avatarRef.current && animationState === 'idle') {
-      const time = clockRef.current.elapsedTime;
-      // Subtle breathing motion
-      avatarRef.current.position.y = Math.sin(time * 0.5) * 0.01;
-      // Subtle head rotation
-      if (avatarRef.current.children[0]) {
-        avatarRef.current.children[0].rotation.y = Math.sin(time * 0.3) * 0.02;
+    // Add subtle idle movements when not speaking
+    if (avatarRef.current) {
+      if (animationState === 'idle' || animationState === 'listening') {
+        // Subtle breathing motion
+        const breathingOffset = Math.sin(elapsedTime * 0.8) * 0.008;
+        avatarRef.current.position.y = breathingOffset;
+        
+        // Very subtle head movements
+        avatarRef.current.rotation.y = Math.sin(elapsedTime * 0.3) * 0.015;
+        avatarRef.current.rotation.x = Math.sin(elapsedTime * 0.4) * 0.008;
+      } else if (animationState === 'speaking') {
+        // Slight head bobbing while speaking
+        const speakingOffset = Math.sin(elapsedTime * 2) * 0.005;
+        avatarRef.current.position.y = speakingOffset;
       }
     }
 
@@ -417,8 +457,11 @@ const AvatarRenderer = forwardRef(({
         clearTimeout(lipSyncTimeoutRef.current);
       }
       
-      if (rendererRef.current && mountRef.current) {
+      if (rendererRef.current && mountRef.current && mountRef.current.contains(rendererRef.current.domElement)) {
         mountRef.current.removeChild(rendererRef.current.domElement);
+      }
+      
+      if (rendererRef.current) {
         rendererRef.current.dispose();
       }
     };
@@ -445,6 +488,13 @@ const AvatarRenderer = forwardRef(({
     }
   }, [isVisible]);
 
+  // Enhanced lip sync data handling
+  useEffect(() => {
+    if (lipSyncData && Object.keys(morphTargetsRef.current).length > 0) {
+      updateMouthMorphTargets(lipSyncData);
+    }
+  }, [lipSyncData]);
+
   return (
     <div 
       ref={mountRef} 
@@ -452,7 +502,9 @@ const AvatarRenderer = forwardRef(({
         width: '100%', 
         height: '100%', 
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        borderRadius: '12px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
       }} 
     />
   );

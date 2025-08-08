@@ -16,6 +16,9 @@ const AudioAnalyzer = forwardRef(({
   const animationFrameRef = useRef(null);
   const dataArrayRef = useRef(null);
   const smoothedVolumeRef = useRef(0);
+  const outputSourceRef = useRef(null);
+  const inputSourceRef = useRef(null);
+  const activeSourceRef = useRef(null);   
   
   // Phoneme detection state
   const frequencyBinsRef = useRef({});
@@ -29,7 +32,9 @@ const AudioAnalyzer = forwardRef(({
     getCurrentPhoneme: () => lastPhonemeRef.current,
     startAnalysis: () => startAudioAnalysis(),
     stopAnalysis: () => stopAudioAnalysis(),
-    getFrequencyData: () => dataArrayRef.current ? Array.from(dataArrayRef.current) : []
+    getFrequencyData: () => dataArrayRef.current ? Array.from(dataArrayRef.current) : [],
+    connectAudioOutput: (outputStream) => connectAudioOutput(outputStream),
+    setActiveSource: (sourceType) => setActiveAudioSource(sourceType)
   }));
 
   // Initialize audio context and analyzer
@@ -44,6 +49,46 @@ const AudioAnalyzer = forwardRef(({
         audioContextRef.current.resume();
       }
 
+// Connect output audio (AI speaking)
+const connectAudioOutput = (outputStream) => {
+  if (!outputStream || !audioContextRef.current || !analyzerRef.current) return false;
+
+  try {
+    if (outputSourceRef.current) {
+      outputSourceRef.current.disconnect();
+    }
+
+    const source = audioContextRef.current.createMediaStreamSource(outputStream);
+    outputSourceRef.current = source;
+    
+    console.log('✅ Audio output connected for lip sync');
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to connect audio output:', error);
+    return false;
+  }
+};
+
+// Set which audio source is active for analysis
+const setActiveAudioSource = (sourceType) => {
+  if (activeSourceRef.current) {
+    activeSourceRef.current.disconnect();
+  }
+
+  if (sourceType === 'output' && outputSourceRef.current) {
+    outputSourceRef.current.connect(analyzerRef.current);
+    activeSourceRef.current = outputSourceRef.current;
+    console.log('🎤 Analyzing AI speech output');
+  } else if (sourceType === 'input' && inputSourceRef.current) {
+    inputSourceRef.current.connect(analyzerRef.current);
+    activeSourceRef.current = inputSourceRef.current;
+    console.log('🎤 Analyzing user input');
+  }
+};
+
+
+
+      
       // Create analyzer node
       const analyzer = audioContextRef.current.createAnalyser();
       analyzer.fftSize = 256; // Smaller FFT for better performance
@@ -98,19 +143,19 @@ const AudioAnalyzer = forwardRef(({
 
     try {
       // Disconnect previous source
-      if (sourceRef.current) {
-        sourceRef.current.disconnect();
+      if (inputsourceRef.current) {
+        inputsourceRef.current.disconnect();
       }
 
       // Create new source from stream
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyzerRef.current);
-      sourceRef.current = source;
+      inputsourceRef.current = source;
 
-      console.log('✅ Audio stream connected');
+      console.log('✅ Audio input connected');
       return true;
     } catch (error) {
-      console.error('❌ Failed to connect audio stream:', error);
+      console.error('❌ Failed to connect audio input:', error);
       return false;
     }
   };

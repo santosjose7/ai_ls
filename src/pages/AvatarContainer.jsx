@@ -14,7 +14,8 @@ const AvatarContainer = ({
   onToggleVoiceAgent = () => {},
   onAvatarReady = () => {},
   onAvatarError = () => {},
-  audioStream = null
+  audioStream = null,
+  conversationAudio = null // New prop for ElevenLabs audio
 }) => {
   // Avatar states
   const [avatarLoaded, setAvatarLoaded] = useState(false);
@@ -68,6 +69,66 @@ const AvatarContainer = ({
       console.log(`🎭 Avatar state changed: ${currentAnimation} → ${newState}`);
     }
   }, [isConnected, isSpeaking, isConnecting, voiceError, avatarError]);
+
+  // Handle audio source switching for lip sync
+  useEffect(() => {
+    if (audioAnalyzerRef.current && avatarLoaded) {
+      if (isSpeaking) {
+        // AI is speaking - analyze conversation audio output
+        if (conversationAudio) {
+          audioAnalyzerRef.current.setActiveSource('output');
+        }
+      } else if (isConnected && audioStream) {
+        // User might be speaking - analyze microphone input
+        audioAnalyzerRef.current.setActiveSource('input');
+      }
+    }
+  }, [isSpeaking, isConnected, audioStream, conversationAudio, avatarLoaded]);
+
+  // Connect conversation audio when available
+  useEffect(() => {
+    if (conversationAudio && audioAnalyzerRef.current && avatarLoaded) {
+      console.log('🔊 Connecting conversation audio to analyzer');
+      audioAnalyzerRef.current.connectAudioOutput(conversationAudio);
+    }
+  }, [conversationAudio, avatarLoaded]);
+
+
+useEffect(() => {
+  // When conversation is speaking, we want to analyze the output audio
+  // This requires getting the audio output from the conversation
+  if (conversation && conversation.status === 'connected') {
+    // we'll need to get the audio output stream from ElevenLabs
+    // This will require accessing the underlying audio element
+    const audioElement = document.querySelector('audio'); // ElevenLabs 
+    if (audioElement && audioAnalyzerRef.current) {
+      // Create audio context for output analysis
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaElementSource(audioElement);
+      const destination = audioContext.createMediaStreamDestination();
+      source.connect(destination);
+      source.connect(audioContext.destination); // Keep playing audio
+      
+      // Pass the output stream to analyzer
+      if (audioAnalyzerRef.current.connectAudioOutput) {
+        audioAnalyzerRef.current.connectAudioOutput(destination.stream);
+      }
+    }
+  }
+}, [isConnected, isSpeaking]);  
+
+//useEffect to switch between input/output analysis
+useEffect(() => {
+  if (audioAnalyzerRef.current) {
+    if (isSpeaking) {
+      // AI is speaking - analyze output for lip sync
+      audioAnalyzerRef.current.setActiveSource('output');
+    } else if (isConnected) {
+      // User might be speaking - analyze input
+      audioAnalyzerRef.current.setActiveSource('input');
+    }
+  }
+}, [isSpeaking, isConnected]);
 
   // Handle voice agent button
   const handleVoiceToggle = () => {
@@ -166,12 +227,16 @@ const AvatarContainer = ({
       </div>
 
       {/* Audio Analyzer (hidden component for lip sync) */}
-      {audioStream && avatarLoaded && (
+      {(audioStream || conversationAudio) && avatarLoaded && (
         <AudioAnalyzer
           ref={audioAnalyzerRef}
           audioStream={audioStream}
-          isActive={isSpeaking}
+          conversationAudio={conversationAudio}
+          isActive={isConnected}
+          isSpeaking={isSpeaking}
           onLipSyncUpdate={handleLipSyncUpdate}
+          sensitivity={1.2}
+          smoothing={0.7}
         />
       )}
 
@@ -192,6 +257,15 @@ const AvatarContainer = ({
              currentAnimation === 'listening' ? 'Listening' :
              'Ready'}
           </span>
+          
+          {/* Audio status indicators */}
+          <div className="audio-indicators">
+            {audioStream && <span className="audio-indicator input">🎤</span>}
+            {conversationAudio && <span className="audio-indicator output">🔊</span>}
+            {lipSyncData && lipSyncData.volume > 0.1 && (
+              <span className="audio-indicator active">📢</span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -201,7 +275,9 @@ const AvatarContainer = ({
           <small>
             State: {currentAnimation} | 
             Loaded: {avatarLoaded ? '✅' : '❌'} | 
-            Audio: {audioStream ? '🎤' : '❌'}
+            Input: {audioStream ? '🎤' : '❌'} |
+            Output: {conversationAudio ? '🔊' : '❌'} |
+            LipSync: {lipSyncData ? `${lipSyncData.phoneme}(${Math.round(lipSyncData.volume * 100)}%)` : '❌'}
           </small>
         </div>
       )}

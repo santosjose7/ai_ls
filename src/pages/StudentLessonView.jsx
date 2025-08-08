@@ -52,6 +52,11 @@ const StudentLessonView = () => {
   const [isVisualPanelVisible, setIsVisualPanelVisible] = useState(true);
   const [visualPanelSize, setVisualPanelSize] = useState('normal'); // 'normal', 'maximized'
   const [visualLayout, setVisualLayout] = useState('side-by-side'); // 'side-by-side', 'overlay', 'fullscreen'
+
+  //avatar
+  const [audioStream, setAudioStream] = useState(null);
+  const [micPermission, setMicPermission] = useState(false);
+  const audioContextRef = useRef(null);
   
   
 
@@ -919,6 +924,27 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
     return uuid.test(id) || (safe.test(id) && id.length >= 8);
   };
 
+  //mic access
+const getMicrophoneAccess = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 44100
+      } 
+    });
+    setAudioStream(stream);
+    setMicPermission(true);
+    console.log('🎤 Microphone access granted');
+    return stream;
+  } catch (error) {
+    console.error('❌ Microphone access denied:', error);
+    setMicPermission(false);
+    return null;
+  }
+};
+
   // Hook for managing the voice conversation
   const conversation = useConversation({
     clientTools, 
@@ -928,6 +954,9 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
       setIsSessionActive(true);
       setVoiceError(null);
       setConnectionAttempts(0);
+
+      // Get microphone access for avatar lip sync
+      const stream = await getMicrophoneAccess();
       setAgentMessages((prev) => [
         ...prev,
         {
@@ -1329,6 +1358,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
                 voiceError={voiceError}
                 studentName={studentName}
                 avatarUrl={import.meta.env.VITE_AVATAR_URL || "ready-player-me-url"}
+                audioStream={audioStream}
                 onToggleVoiceAgent={toggleVoiceAgent}
                 onAvatarReady={() => console.log('Avatar ready!')}
                 onAvatarError={(error) => console.error('Avatar error:', error)}
