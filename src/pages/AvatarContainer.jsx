@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
 import AvatarRenderer from './avatar/AvatarRenderer';
-import AudioAnalyzer from './avatar/AudioAnalyzer';
+import AudioAnalyzer from './avatar/AudioAnalyzer'
+import conversation from './StudentLessonView'
 import '../styles/Avatar.css';
 
 const AvatarContainer = ({
