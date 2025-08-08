@@ -956,8 +956,10 @@ const getMicrophoneAccess = async () => {
       setConnectionAttempts(0);
 
       // Get microphone access for avatar lip sync
-      const stream = await getMicrophoneAccess();
-      setAgentMessages((prev) => [
+      
+      (async () => {
+        const stream = await getMicrophoneAccess();
+        setAgentMessages((prev) => [
         ...prev,
         {
           id: Date.now(),
@@ -966,6 +968,7 @@ const getMicrophoneAccess = async () => {
           timestamp: new Date(),
         },
       ]);
+      })();
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
     },
     onDisconnect: () => {
