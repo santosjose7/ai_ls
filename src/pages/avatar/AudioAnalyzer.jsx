@@ -26,30 +26,8 @@ const AudioAnalyzer = forwardRef(({
   const lastPhonemeRef = useRef('silence');
   const phonemeTimeoutRef = useRef(null);
 
-  // Expose methods to parent component
-  useImperativeHandle(ref, () => ({
-    getVolume: () => smoothedVolumeRef.current,
-    getCurrentPhoneme: () => lastPhonemeRef.current,
-    startAnalysis: () => startAudioAnalysis(),
-    stopAnalysis: () => stopAudioAnalysis(),
-    getFrequencyData: () => dataArrayRef.current ? Array.from(dataArrayRef.current) : [],
-    connectAudioOutput: (outputStream) => connectAudioOutput(outputStream),
-    setActiveSource: (sourceType) => setActiveAudioSource(sourceType)
-  }));
 
-  // Initialize audio context and analyzer
-  const initAudioContext = () => {
-    try {
-      // Create or resume audio context
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-
-// Connect output audio (AI speaking)
+  // Connect output audio (AI speaking)
 const connectAudioOutput = (outputStream) => {
   if (!outputStream || !audioContextRef.current || !analyzerRef.current) return false;
 
@@ -57,10 +35,8 @@ const connectAudioOutput = (outputStream) => {
     if (outputSourceRef.current) {
       outputSourceRef.current.disconnect();
     }
-
     const source = audioContextRef.current.createMediaStreamSource(outputStream);
     outputSourceRef.current = source;
-    
     console.log('✅ Audio output connected for lip sync');
     return true;
   } catch (error) {
@@ -85,6 +61,30 @@ const setActiveAudioSource = (sourceType) => {
     console.log('🎤 Analyzing user input');
   }
 };
+
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getVolume: () => smoothedVolumeRef.current,
+    getCurrentPhoneme: () => lastPhonemeRef.current,
+    startAnalysis: () => startAudioAnalysis(),
+    stopAnalysis: () => stopAudioAnalysis(),
+    getFrequencyData: () => dataArrayRef.current ? Array.from(dataArrayRef.current) : [],
+    connectAudioOutput: (outputStream) => connectAudioOutput(outputStream),
+    setActiveSource: (sourceType) => setActiveAudioSource(sourceType)
+  }));
+
+  // Initialize audio context and analyzer
+  const initAudioContext = () => {
+    try {
+      // Create or resume audio context
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
 
 
 
@@ -143,14 +143,14 @@ const setActiveAudioSource = (sourceType) => {
 
     try {
       // Disconnect previous source
-      if (inputsourceRef.current) {
-        inputsourceRef.current.disconnect();
+      if (inputSourceRef.current) {
+        inputSourceRef.current.disconnect();
       }
 
       // Create new source from stream
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyzerRef.current);
-      inputsourceRef.current = source;
+      inputSourceRef.current = source;
 
       console.log('✅ Audio input connected');
       return true;
