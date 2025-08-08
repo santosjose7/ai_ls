@@ -4,7 +4,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import RenderDiagram from './RenderDiagram';
 import RenderShapes from './RenderShapes';
-import AvatarContainer from './avatar/AvatarContainer';
+import AvatarContainer from './AvatarContainer';
 import mermaid from 'mermaid';
 mermaid.initialize({ startOnLoad: false });
 import '../styles/StudentLessonView.css';
