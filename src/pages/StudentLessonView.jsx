@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useConversation } from '@elevenlabs/react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
@@ -8,64 +9,64 @@ mermaid.initialize({ startOnLoad: false });
 import RenderDiagram   from './RenderDiagram';
 import RenderShapes    from './RenderShapes';
 import AvatarContainer from './AvatarContainer';
-import StudentSetup    from './Setup';
 
 import {
-  BookOpen, X, Loader, CheckCircle2, RefreshCw, Home, GraduationCap,
-  TrendingUp, FileText, Settings, Eye, EyeOff, Maximize2, Minimize2
+  BookOpen, Loader, CheckCircle2, RefreshCw, Eye, EyeOff, Maximize2, Minimize2
 } from 'lucide-react';
-
 import '../styles/StudentLessonView.css';
 
-const StudentLessonView = () => {
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
-  /* ------------- SHARED STATE (populated by StudentSetup) ------------- */
-  const [studentName,     setStudentName]     = useState('');
-  const [uploadedFile,    setUploadedFile]    = useState(null);
-  const [pdfContent,      setPdfContent]      = useState('');
-  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
+export default function StudentLessonView() {
+  /* ---------- props injected by StudentSetup via Router ---------- */
+  const { state } = useLocation();
+  const studentName  = state?.studentName || 'Student';
+  const uploadedFile = state?.uploadedFile;
+  const pdfContent   = state?.pdfContent  || '';
 
-  /* ------------- VOICE & VISUAL STATE ------------- */
-  const [agentId,           setAgentId]           = useState(null);
-  const [agentMessages,     setAgentMessages]     = useState([]);
-  const [isConnecting,      setIsConnecting]      = useState(false);
-  const [voiceError,        setVoiceError]        = useState(null);
-  const [connectionAttempts,setConnectionAttempts]= useState(0);
-  const [isSessionActive,   setIsSessionActive]   = useState(false);
-
-  const [visualContent,     setVisualContent]     = useState(null);
-  const [visualHistory,     setVisualHistory]     = useState([]);
-  const [isVisualPanelVisible,setIsVisualVisible] = useState(true);
-  const [visualPanelSize,   setVisualPanelSize]   = useState('normal');
-
+  /* ---------- voice / visual state ---------- */
+  const [agentId,   setAgentId]   = useState(null);
+  const [isConnecting,setIsConnecting] = useState(false);
+  const [voiceError,setVoiceError]     = useState(null);
+  const [connAtt,setConnAtt]           = useState(0);
   const isConnectingRef = useRef(false);
-  const connectionTimeoutRef = useRef(null);
-  const maxConnectionAttempts = 3;
+  const timeoutRef      = useRef(null);
+  const maxConn = 3;
 
-  /* -------------  VISUAL RENDER HELPERS ------------- */
+  const [agentMessages,setAgentMessages] = useState([]);
+  const [visualContent,setVisualContent] = useState(null);
+  const [visualHistory,setVisualHistory] = useState([]);
+  const [panelVisible,setPanelVisible]   = useState(true);
+  const [panelSize,setPanelSize]         = useState('normal');
+  const [audioStream,setAudioStream]     = useState(null);
+
+  /* ---------- rendering helpers (unchanged) ---------- */
   const renderEquation = ({ title, latex, explanation }) => {
-    let rendered = '';
-    try {
-      rendered = katex.renderToString(latex, { throwOnError: false, displayMode: true });
-    } catch {
-      rendered = `<span style="color:#e11">Invalid LaTeX</span>`;
-    }
+    let html = '';
+    try { html = katex.renderToString(latex,{throwOnError:false,displayMode:true}); }
+    catch { html = '<span style="color:#e11">Invalid LaTeX</span>'; }
     return (
       <div className="visual-equation">
         <h4>{title}</h4>
-        <div className="equation-container" dangerouslySetInnerHTML={{ __html: rendered }} />
+        <div dangerouslySetInnerHTML={{ __html: html }} />
         {explanation && <p className="equation-explanation">{explanation}</p>}
       </div>
     );
   };
 
+  const renderGeneratedEquation = (content) => (
+    <div className="visual-generated-equation">
+      <h4>{content.title}</h4>
+      <img src={content.imageUrl} alt={content.title} />
+      {content.explanation && <p className="equation-explanation">{content.explanation}</p>}
+      {content.steps && <ol>{content.steps.map((s,i)=><li key={i}>{s.description||s}</li>)}</ol>}
+    </div>
+  );
+
   const renderImage = ({ title, url, caption }) => (
     <div className="visual-image">
       <h4>{title}</h4>
-      <div className="image-container">
-        <img src={url} alt={title} />
-      </div>
+      <img src={url} alt={title} />
       {caption && <p className="image-caption">{caption}</p>}
     </div>
   );
@@ -74,16 +75,15 @@ const StudentLessonView = () => {
     <div className="visual-steps">
       <h4>{title}</h4>
       <div className="steps-container">
-        {steps.map((step, idx) => (
-          <div key={idx} className={`step ${idx === currentStep ? 'current' : ''} ${idx < currentStep ? 'completed' : ''}`}>
-            <div className="step-number">{idx + 1}</div>
+        {steps.map((s,i)=>(
+          <div key={i} className={`step ${i===currentStep?'current':''} ${i<currentStep?'completed':''}`}>
+            <div className="step-number">{i+1}</div>
             <div className="step-content">
-              <h5>{step.title}</h5>
-              <p>{step.description}</p>
-              {step.visual && (
+              <h5>{s.title}</h5><p>{s.description}</p>
+              {s.visual && (
                 <div className="step-visual">
-                  {step.visual.type === 'equation' && renderEquation(step.visual)}
-                  {step.visual.type === 'image'   && renderImage(step.visual)}
+                  {s.visual.type==='equation' && renderEquation(s.visual)}
+                  {s.visual.type==='image'    && renderImage(s.visual)}
                 </div>
               )}
             </div>
@@ -97,12 +97,11 @@ const StudentLessonView = () => {
     <div className="visual-main-points">
       <h4>{title}</h4>
       <div className="points-container">
-        {points.map((p, i) => (
+        {points.map((p,i)=>(
           <div key={i} className="main-point">
-            <CheckCircle2 className="point-icon" size={20} />
+            <CheckCircle2 size={20} />
             <div className="point-content">
-              <h5>{p.title}</h5>
-              <p>{p.description}</p>
+              <h5>{p.title}</h5><p>{p.description}</p>
               {p.example && <div className="point-example"><em>Example: {p.example}</em></div>}
             </div>
           </div>
@@ -120,311 +119,291 @@ const StudentLessonView = () => {
           <div className="analogy-connector">↔</div>
           <div className="analogy-side"><h5>Like</h5><p>{comparison}</p></div>
         </div>
-        <div className="analogy-explanation"><p>{explanation}</p></div>
+        <p className="analogy-explanation">{explanation}</p>
       </div>
     </div>
   );
 
   const renderVisualContent = () => {
-    if (!visualContent) {
-      return (
-        <div className="visual-placeholder">
-          <Eye size={48} className="placeholder-icon" />
-          <h3>Visual Learning Space</h3>
-          <p>Visual aids will appear here when your AI tutor shares them.</p>
-        </div>
-      );
-    }
+    if (!visualContent) return (
+      <div className="visual-placeholder">
+        <Eye size={48}/>
+        <h3>Visual Learning Space</h3>
+        <p>Waiting for your AI tutor…</p>
+      </div>
+    );
     switch (visualContent.type) {
-      case 'equation':           return renderEquation(visualContent);
-      case 'image':              return renderImage(visualContent);
-      case 'diagram':            return <RenderDiagram   content={visualContent} />;
-      case 'shape-diagram':      return <RenderShapes    content={visualContent} />;
-      case 'steps':              return renderStepByStep(visualContent);
-      case 'main-points':        return renderMainPoints(visualContent);
-      case 'analogy':            return renderAnalogy(visualContent);
-      default:                   return null;
+      case 'generated-equation':
+      case 'generated-math-graph': return renderGeneratedEquation(visualContent);
+      case 'equation':             return renderEquation(visualContent);
+      case 'image':                return renderImage(visualContent);
+      case 'diagram':              return <RenderDiagram content={visualContent}/>;
+      case 'shape-diagram':        return <RenderShapes  content={visualContent}/>;
+      case 'steps':                return renderStepByStep(visualContent);
+      case 'main-points':          return renderMainPoints(visualContent);
+      case 'analogy':              return renderAnalogy(visualContent);
+      default:                     return null;
     }
   };
 
-  /* ------------- CLIENT TOOLS (unchanged signatures) ------------- */
+  /* ---------- client tools (copy-pasted & unchanged) ---------- */
   const clientTools = useMemo(() => ({
-    getStudentName:       async () => ({ student_name: studentName || 'Student' }),
-    setStudentName:       async ({ newName }) => {
-      if (newName?.trim()) { setStudentName(newName.trim()); return { success:true }; }
-      return { success:false, message:'Invalid name' };
-    },
-    getSessionContext:    async () => ({
-      student_name: studentName, has_pdf:!!uploadedFile, pdf_name:uploadedFile?.name,
-      pdf_processed:!!pdfContent, session_active:isSessionActive
+    getStudentName: async () => ({ student_name: studentName }),
+    setStudentName: async ({ newName }) => (newName?.trim() ? (setStudentName(newName.trim()), {success:true}) : {success:false}),
+    getSessionContext: async () => ({
+      student_name: studentName,
+      has_pdf: !!uploadedFile,
+      pdf_name: uploadedFile?.name || null,
+      pdf_processed: !!pdfContent,
+      session_active: conversation.status === 'connected',
+      visual_panel_visible: panelVisible,
+      current_visual: visualContent?.type || null,
     }),
-    getPdfContent:        async () => pdfContent ? { has_content:true, content:pdfContent } : { has_content:false },
-    getPdfSummary:        async ({ max_length=500 }) => {
-      if (!pdfContent) return { has_content:false };
+    getPdfContent: async () => (pdfContent ? {has_content:true, content:pdfContent} : {has_content:false}),
+    getPdfSummary: async ({max_length=500}) => {
+      if (!pdfContent) return {has_content:false};
       const s = pdfContent.length>max_length ? pdfContent.slice(0,max_length)+'…' : pdfContent;
-      return { has_content:true, summary:s };
+      return {has_content:true, summary:s};
     },
 
-    /* Visual tools */
-    displayEquation:            async ({ title, latex }) => { setVisualContent({ type:'equation', title, latex }); return { success:true }; },
-    displayImage:               async ({ url })         => { setVisualContent({ type:'image',    title:'', url }); return { success:true }; },
-    displaySteps:               async ({ title, steps })=> { setVisualContent({ type:'steps',    title, steps }); return { success:true }; },
-    displayKeyPoints:           async ({ title, points })=>{ setVisualContent({ type:'main-points',title,points});return{success:true};},
-    displayAnalogy:             async ({ title, concept, comparison, explanation }) => {
-      setVisualContent({ type:'analogy', title, concept, comparison, explanation }); return { success:true };
+    displayEquation: async ({title,latex}) => {
+      const v={type:'equation',title,latex,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
     },
-    clearVisuals:               async () => { setVisualContent(null); return { success:true }; },
-    showVisualPanel:            async () => { setIsVisualVisible(true);  return { success:true }; },
-    hideVisualPanel:            async () => { setIsVisualVisible(false); return { success:true }; },
-  }), [studentName, uploadedFile, pdfContent, isSessionActive, visualContent, visualHistory]);
+    generateEquationWithSteps: async ({equation,steps,explanation,template}) => {
+      const res = await fetch(`${API_BASE}/api/voice/generate/equation-steps`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({equation,steps,explanation,template})
+      });
+      if (!res.ok) throw new Error('Generation failed');
+      const data=await res.json();
+      const v={type:'generated-equation',title:'Equation with Steps',...data.visual,steps};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    generateMathGraph: async ({expression,domain,range,title}) => {
+      const res = await fetch(`${API_BASE}/api/voice/generate/math-graph`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expression,domain,range,title})
+      });
+      if (!res.ok) throw new Error('Graph failed');
+      const data=await res.json();
+      const v={type:'generated-math-graph',title:title||'Graph',...data.visual};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displayImage: async ({url}) => {
+      const v={type:'image',title:'',url,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displayDiagram: async ({title,description,mermaidCode}) => {
+      const v={type:'diagram',title:title||'Diagram',description,mermaidCode,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displayShapes: async ({title,width=700,height=500,shapes}) => {
+      const v={type:'shapes',title,width,height,shapes,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displayKeyPoints: async ({title,points}) => {
+      const pts = Array.isArray(points)?points:points.split(',').map(p=>({title:p.trim()}));
+      const v={type:'main-points',title:title||'Key Points',points:pts,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displayAnalogy: async ({title,concept,comparison,explanation}) => {
+      const v={type:'analogy',title:title||'Analogy',concept,comparison,explanation,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    displaySteps: async ({title,steps}) => {
+      const stps = Array.isArray(steps)?steps:steps.split(',').map(d=>({title:d.trim()}));
+      const v={type:'steps',title:title||'Steps',steps:stps,id:Date.now()};
+      setVisualContent(v); setVisualHistory(h=>[...h.slice(-9),v]);
+      return {success:true};
+    },
+    nextStep: async () => {
+      if (visualContent?.type!=='steps') return {success:false};
+      const newStep = Math.min(visualContent.currentStep+1, visualContent.steps.length-1);
+      setVisualContent({...visualContent,currentStep:newStep});
+      return {success:true};
+    },
+    previousStep: async () => {
+      if (visualContent?.type!=='steps') return {success:false};
+      const newStep = Math.max(visualContent.currentStep-1,0);
+      setVisualContent({...visualContent,currentStep:newStep});
+      return {success:true};
+    },
+    clearVisuals: async () => (setVisualContent(null), {success:true}),
+    showVisualPanel: async () => (setPanelVisible(true),  {success:true}),
+    hideVisualPanel: async () => (setPanelVisible(false), {success:true}),
+    testVisualSystem: async () => {
+      const v={type:'main-points',title:'Test',points:[{title:'System OK'}]};
+      setVisualContent(v); return {success:true};
+    },
+    getVisualState: async () => ({
+      success:true,
+      has_visual:!!visualContent,
+      visual_type:visualContent?.type||null,
+      visual_title:visualContent?.title||null,
+      panel_visible:panelVisible
+    }),
+    logMessage: async ({message,level='info'}) => (console[level](message), {logged:true}),
+    showNotification: async ({message}) => (setAgentMessages(m=>[...m,{type:'system',content:`📢 ${message}`,ts:Date.now()}]), {success:true}),
+  }), [studentName, uploadedFile, pdfContent, visualContent, panelVisible, conversation.status]);
 
-  /* ------------- VOICE CONVERSATION HOOK ------------- */
+  /* ---------- voice conversation ---------- */
   const conversation = useConversation({
     clientTools,
     onConnect: () => {
       isConnectingRef.current = false;
       setIsConnecting(false);
-      setIsSessionActive(true);
-      setVoiceError(null);
-      setConnectionAttempts(0);
-      setAgentMessages(prev => [...prev, { id:Date.now(), type:'system', content:`Hello ${studentName || 'there'}, I'm ready to help!`, timestamp:new Date() }]);
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      setAgentMessages(m => [...m, {type:'system',content:`Hello ${studentName}, I’m ready to help!`,ts:Date.now()}]);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     },
     onDisconnect: () => {
       isConnectingRef.current = false;
       setIsConnecting(false);
-      setIsSessionActive(false);
-      setAgentMessages(prev => [...prev, { id:Date.now(), type:'system', content:'Voice agent disconnected.', timestamp:new Date() }]);
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      setAgentMessages(m => [...m, {type:'system',content:'Session ended',ts:Date.now()}]);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     },
     onMessage: (msg) => {
-      const content = typeof msg === 'string' ? msg : msg.message ?? msg.text ?? msg.content ?? JSON.stringify(msg);
-      const type    = typeof msg === 'string' ? 'agent' : msg.type ?? msg.source ?? 'agent';
-      setAgentMessages(prev => [...prev, { id:Date.now()+Math.random(), type, content, timestamp:new Date(), isFinal:msg?.isFinal??true }]);
+      const content = typeof msg==='string' ? msg : msg.message ?? msg.text ?? '';
+      const type    = typeof msg==='string' ? 'agent' : msg.type ?? msg.source ?? 'agent';
+      setAgentMessages(m => [...m, {type,content,ts:Date.now()}]);
     },
     onError: (err) => {
-      const errorMessage = err?.message ?? err?.toString() ?? 'Unknown error';
       isConnectingRef.current = false;
       setIsConnecting(false);
-      setIsSessionActive(false);
-      setVoiceError(errorMessage);
-      setAgentMessages(prev => [...prev, { id:Date.now(), type:'error', content:`Error: ${errorMessage}`, timestamp:new Date() }]);
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      setVoiceError(err.message ?? 'Unknown error');
     },
   });
 
-  /* ------------- BOOT & CLEAN-UP ------------- */
   useEffect(() => {
-    const defaultAgent = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
-    if (defaultAgent && /^[a-zA-Z0-9_-]{8,}$/.test(defaultAgent)) setAgentId(defaultAgent);
+    const id = import.meta.env.VITE_ELEVENLABS_AGENT_ID;
+    if (id && /^[a-zA-Z0-9_-]{8,}$/.test(id)) setAgentId(id);
     else setVoiceError('Voice agent not configured');
-    return () => {
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-      if (conversation.status === 'connected' && !isConnectingRef.current) conversation.endSession().catch(console.error);
-    };
   }, []);
 
-  /* ------------- VOICE TOGGLE ------------- */
+  /* ---------- voice toggle ---------- */
   const toggleVoiceAgent = async () => {
-    if (conversation.status === 'connected') { await conversation.endSession(); return; }
-    if (isConnecting || isConnectingRef.current) return;
-    if (!studentName.trim()) return;
-    if (!uploadedFile || !pdfContent) return;
-    if (!agentId) return;
-    if (connectionAttempts >= maxConnectionAttempts) { setVoiceError('Max attempts reached'); return; }
-
+    if (conversation.status === 'connected') { conversation.endSession(); return; }
+    if (isConnecting || connAtt >= maxConn) return;
     isConnectingRef.current = true;
     setIsConnecting(true);
     setVoiceError(null);
-    setConnectionAttempts(c => c + 1);
+    setConnAtt(c => c + 1);
 
-    connectionTimeoutRef.current = setTimeout(() => {
-      if (isConnectingRef.current) {
-        isConnectingRef.current = false;
-        setIsConnecting(false);
-        setVoiceError('Connection timeout');
-      }
-    }, 30000);
-
-    try {
-      const resp = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body:JSON.stringify({ agentId, studentName:studentName.trim(), pdfContent, fileName:uploadedFile.name })
-      });
-      if (!resp.ok) throw new Error(`Server ${resp.status}`);
-      const { signedUrl } = await resp.json();
-      if (!signedUrl) throw new Error('No signedUrl');
-      await conversation.startSession({ signedUrl });
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-    } catch (e) {
-      console.error(e);
+    timeoutRef.current = setTimeout(() => {
       isConnectingRef.current = false;
       setIsConnecting(false);
-      setVoiceError(e.message || 'Failed to connect');
-      setConnectionAttempts(c => Math.max(0, c - 1));
-      if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
+      setVoiceError('Timeout');
+    }, 30_000);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/voice/get-signed-url`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ agentId, studentName, pdfContent, fileName:uploadedFile.name })
+      });
+      if (!res.ok) throw new Error(`Server ${res.status}`);
+      const { signedUrl } = await res.json();
+      await conversation.startSession({ signedUrl });
+    } catch (e) {
+      setVoiceError(e.message || 'Failed');
+    } finally {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      isConnectingRef.current = false;
+      setIsConnecting(false);
     }
   };
 
-  /* ------------- RENDER ------------- */
+  /* ---------- render ---------- */
   return (
     <>
       <header className="dashboard-header">
         <div className="header-content">
-          <div className="header-left">
-            <BookOpen size={24} className="header-icon" />
-            <h1>AI Learning Assistant</h1>
-          </div>
+          <BookOpen size={24}/>
+          <h1>AI Learning Assistant</h1>
         </div>
       </header>
 
       <main className="container-lessons-page">
-        <div className={`main-content ${isVisualPanelVisible ? 'visual-visible' : 'visual-hidden'} ${visualPanelSize}`}>
-          {/* LEFT ------------------------------------------------*/}
+        <div className={`main-content ${panelVisible?'visual-visible':'visual-hidden'} ${panelSize}`}>
+          {/* left: voice + chat */}
           <div className="control-panel">
-            <StudentSetup
-              studentName={studentName}
-              setStudentName={setStudentName}
-              uploadedFile={uploadedFile}
-              setUploadedFile={setUploadedFile}
-              pdfContent={pdfContent}
-              setPdfContent={setPdfContent}
-              isProcessingPDF={isProcessingPDF}
-              setIsProcessingPDF={setIsProcessingPDF}
-              API_BASE={API_BASE}
-            />
-
-            {studentName.trim() && uploadedFile && pdfContent && (
-              <section className="voice-section">
-                <div className="spectrum-wrapper">
-                  <div className="spectrum-circle">
-                    {Array.from({ length: 60 }).map((_, i) => {
-                      const hue = (i / 60) * 360;
-                      return (
-                        <div
-                          key={i}
-                          className={`spectrum-bar ${isConnecting
-                            ? 'connecting'
-                            : conversation.status === 'connected'
-                            ? conversation.isSpeaking
-                              ? 'speaking'
-                              : 'listening'
-                            : ''}`}
-                          style={{
-                            transform: `rotate(${i * 6}deg) translateY(-110px)`,
-                            background: `hsl(${hue}, 70%, 60%)`,
-                          }}
-                        />
-                      );
-                    })}
-                    <button
-                      onClick={toggleVoiceAgent}
-                      disabled={isConnecting}
-                      className="voice-btn"
-                      title={
-                        conversation.status === 'connected'
-                          ? 'End session'
-                          : voiceError
-                          ? 'Retry'
-                          : 'Start voice assistant'
-                      }
-                    >
-                      {isConnecting ? (
-                        <Loader className="spinning" size={32} />
-                      ) : conversation.status === 'connected' ? (
-                        <CheckCircle2 size={48} style={{ color: '#10b981' }} />
-                      ) : voiceError ? (
-                        <RefreshCw size={32} />
-                      ) : (
-                        <BookOpen size={48} style={{ color: '#3b82f6' }} />
-                      )}
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    className="query-input"
-                    placeholder="Type a question and press Enter…"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        conversation.sendUserMessage(e.currentTarget.value.trim());
-                        e.currentTarget.value = '';
-                      }
-                    }}
+            <div className="spectrum-wrapper">
+              <div className="spectrum-circle">
+                {[...Array(60)].map((_,i)=>(
+                  <div
+                    key={i}
+                    className={`spectrum-bar ${
+                      isConnecting
+                        ? 'connecting'
+                        : conversation.status==='connected'
+                          ? conversation.isSpeaking
+                            ? 'speaking'
+                            : 'listening'
+                          : ''
+                    }`}
+                    style={{transform:`rotate(${i*6}deg) translateY(-110px)`,background:`hsl(${i*6},70%,60%)`}}
                   />
-                </div>
+                ))}
+                <button
+                  onClick={toggleVoiceAgent}
+                  disabled={isConnecting}
+                  className="voice-btn"
+                  title={conversation.status==='connected'?'End':'Start'}
+                >
+                  {isConnecting ? <Loader className="spinning" size={32}/> :
+                   conversation.status==='connected' ? <CheckCircle2 size={48}/> :
+                   voiceError ? <RefreshCw size={32}/> : <BookOpen size={48}/>}
+                </button>
+              </div>
+              <input
+                className="query-input"
+                placeholder="Type a question and press Enter…"
+                onKeyDown={(e)=>{
+                  if (e.key==='Enter' && e.target.value.trim()) {
+                    conversation.sendUserMessage(e.target.value.trim());
+                    e.target.value='';
+                  }
+                }}
+              />
+            </div>
 
-                {agentMessages.length > 0 && (
-                  <div className="chat-box">
-                    <h3>Conversation with {studentName}</h3>
-                    <div className="chat-messages">
-                      {agentMessages.map((m) => (
-                        <div key={m.id} className={`message ${m.type}`}>
-                          <div className="message-content">{m.content}</div>
-                          <span className="message-time">{m.timestamp.toLocaleTimeString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
+            {agentMessages.length>0 && (
+              <div className="chat-box">
+                <h3>Conversation with {studentName}</h3>
+                <div className="chat-messages">
+                  {agentMessages.map(m=>(
+                    <div key={m.ts} className={`msg ${m.type}`}>{m.content}</div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
-          {/* RIGHT – Visual Panel --------------------------------*/}
-          {isVisualPanelVisible && (
+          {/* right: visuals */}
+          {panelVisible && (
             <aside className="visual-panel">
               <header className="visual-panel-header">
                 <h3>Visual Learning</h3>
                 <div className="panel-controls">
-                  <button
-                    onClick={() => setVisualPanelSize((s) => (s === 'normal' ? 'maximized' : 'normal'))}
-                    className="icon-btn"
-                    title={visualPanelSize === 'normal' ? 'Expand' : 'Collapse'}
-                  >
-                    {visualPanelSize === 'normal' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                  <button onClick={()=>setPanelSize(s=>s==='normal'?'maximized':'normal')} className="icon-btn">
+                    {panelSize==='normal'?<Maximize2 size={16}/>:<Minimize2 size={16}/>}
                   </button>
-                  <button onClick={() => setIsVisualVisible(false)} className="icon-btn" title="Hide">
-                    <EyeOff size={16} />
+                  <button onClick={()=>setPanelVisible(false)} className="icon-btn">
+                    <EyeOff size={16}/>
                   </button>
                 </div>
               </header>
               <div className="visual-content">{renderVisualContent()}</div>
-              {visualHistory.length > 0 && (
-                <footer className="visual-history">
-                  <h4>Recent</h4>
-                  <div className="history-list">
-                    {visualHistory.slice(-3).map((v) => (
-                      <button key={v.id} className="history-item" onClick={() => setVisualContent(v)}>
-                        <span className="history-type">{v.type}</span>
-                        <span className="history-title">{v.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                </footer>
-              )}
             </aside>
           )}
         </div>
-
-        {/* Bottom navigation */}
-        <nav className="bottom-nav">
-          {[
-            { icon: Home, label: 'Home' },
-            { icon: GraduationCap, label: 'Courses' },
-            { icon: TrendingUp, label: 'Progress' },
-            { icon: FileText, label: 'Resources' },
-            { icon: Settings, label: 'Settings' },
-          ].map(({ icon: Icon, label }) => (
-            <button key={label} className={`nav-item ${label === 'Home' ? 'active' : ''}`}>
-              <Icon size={20} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </nav>
       </main>
     </>
   );
-};
-
-export default StudentLessonView;
+}
