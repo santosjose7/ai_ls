@@ -1281,44 +1281,67 @@ const getMicrophoneAccess = async () => {
             </div>
           </div>
 
-          {/* Voice UI */}
-            <div className="spectrum-container">
-              <div className="spectrum-circle">
-                {generateSpectrumBars()}
-                <div className="spectrum-center">
-                  <BookOpen size={48} />
+          {/* Right Panel - Visual Display */}
+          {isVisualPanelVisible && (
+            <div className="visual-panel">
+              <div className="visual-panel-header">
+                <h3>Visual Learning</h3>
+                <div className="visual-panel-controls">
+                  <button 
+                    onClick={toggleVisualPanelSize}
+                    className="control-btn"
+                    title={visualPanelSize === 'normal' ? 'Maximize' : 'Minimize'}
+                  >
+                    {visualPanelSize === 'normal' ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                  </button>
+                  <button 
+                    onClick={toggleVisualPanel}
+                    className="control-btn"
+                    title="Hide visual panel"
+                  >
+                    <EyeOff size={16} />
+                  </button>
                 </div>
-
-                <button
-                  onClick={toggleVoiceAgent}
-                  disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
-                  className={`voice-agent-center-btn ${
-                    conversation.status === 'connected' || isSessionActive
-                      ? 'connected'
-                      : voiceError
-                        ? 'error'
-                        : ''
-                  }`}
-                  title={
-                    conversation.status === 'connected' || isSessionActive
-                      ? 'End session'
-                      : voiceError
-                        ? voiceError
-                        : 'Start voice assistant'
-                  }
-                >
-                  {isConnecting ? (
-                    <RefreshCw className="spinning" size={24} />
-                  ) : conversation.status === 'connected' || isSessionActive ? (
-                    <BookOpen size={60} style={{ color: '#c62b2bff', fill: '#c62b2bff' }} />
-                  ) : voiceError ? (
-                    <AlertCircle size={24} />
-                  ) : (
-                    <BookOpen size={60} style={{ color: '#20bd59ff', fill: '#20bd59ff' }} />
-                  )}
-                </button>
               </div>
+              
+              <div className="visual-content-area">
+                {renderVisualContent()}
+              </div>
+
+              {visualHistory.length > 0 && (
+                <div className="visual-history">
+                  <h4>Recent Visuals</h4>
+                  <div className="history-items">
+                    {visualHistory.slice(-3).map((item) => (
+                      <button
+                        key={item.id}
+                        className="history-item"
+                        onClick={() => setVisualContent(item)}
+                        title={`Return to: ${item.title}`}
+                      >
+                        <span className="history-type">{item.type}</span>
+                        <span className="history-title">{item.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+
+          {/* Visual Panel Toggle Button (when hidden) */}
+          {!isVisualPanelVisible && (
+            <button 
+              onClick={toggleVisualPanel}
+              className="visual-toggle-btn"
+              title="Show visual panel"
+            >
+              <Eye size={20} />
+              <span>Show Visuals</span>
+            </button>
+          )}
+        </div>
+        
 
             {/* Bottom nav */}
             <div className="bottom-navigation">
@@ -1328,7 +1351,7 @@ const getMicrophoneAccess = async () => {
               <button className="nav-item"><FileText size={20} /><span>Resources</span></button>
               <button className="nav-item"><Settings size={20} /><span>Settings</span></button>
             </div>
-          </div>
+          
       </main>
 
       <style jsx>{`
