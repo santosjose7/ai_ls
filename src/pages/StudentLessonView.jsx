@@ -1226,8 +1226,42 @@ const getMicrophoneAccess = async () => {
               )}
 
               {/* Voice UI */}
-              <div className="spectrum-container">
-                {/* ... rest of voice UI ... */}
+            <div className="spectrum-container">
+              <div className="spectrum-circle">
+                {generateSpectrumBars()}
+                <div className="spectrum-center">
+                  <BookOpen size={48} />
+                </div>
+
+                <button
+                  onClick={toggleVoiceAgent}
+                  disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
+                  className={`voice-agent-center-btn ${
+                    conversation.status === 'connected' || isSessionActive
+                      ? 'connected'
+                      : voiceError
+                        ? 'error'
+                        : ''
+                  }`}
+                  title={
+                    conversation.status === 'connected' || isSessionActive
+                      ? 'End session'
+                      : voiceError
+                        ? voiceError
+                        : 'Start voice assistant'
+                  }
+                >
+                  {isConnecting ? (
+                    <RefreshCw className="spinning" size={24} />
+                  ) : conversation.status === 'connected' || isSessionActive ? (
+                    <BookOpen size={60} style={{ color: '#c62b2bff', fill: '#c62b2bff' }} />
+                  ) : voiceError ? (
+                    <AlertCircle size={24} />
+                  ) : (
+                    <BookOpen size={60} style={{ color: '#20bd59ff', fill: '#20bd59ff' }} />
+                  )}
+                </button>
+              </div>
               </div>
 
               {/* Chat history */}
@@ -1247,30 +1281,54 @@ const getMicrophoneAccess = async () => {
             </div>
           </div>
 
-          {/* Right Panel - Visual Display */}
-          {isVisualPanelVisible && (
-            <div className="visual-panel">
-              {/* ... visual panel content ... */}
+          {/* Voice UI */}
+            <div className="spectrum-container">
+              <div className="spectrum-circle">
+                {generateSpectrumBars()}
+                <div className="spectrum-center">
+                  <BookOpen size={48} />
+                </div>
+
+                <button
+                  onClick={toggleVoiceAgent}
+                  disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
+                  className={`voice-agent-center-btn ${
+                    conversation.status === 'connected' || isSessionActive
+                      ? 'connected'
+                      : voiceError
+                        ? 'error'
+                        : ''
+                  }`}
+                  title={
+                    conversation.status === 'connected' || isSessionActive
+                      ? 'End session'
+                      : voiceError
+                        ? voiceError
+                        : 'Start voice assistant'
+                  }
+                >
+                  {isConnecting ? (
+                    <RefreshCw className="spinning" size={24} />
+                  ) : conversation.status === 'connected' || isSessionActive ? (
+                    <BookOpen size={60} style={{ color: '#c62b2bff', fill: '#c62b2bff' }} />
+                  ) : voiceError ? (
+                    <AlertCircle size={24} />
+                  ) : (
+                    <BookOpen size={60} style={{ color: '#20bd59ff', fill: '#20bd59ff' }} />
+                  )}
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* Visual Panel Toggle Button (when hidden) */}
-          {!isVisualPanelVisible && (
-            <button onClick={toggleVisualPanel} className="visual-toggle-btn">
-              <Eye size={20} />
-              <span>Show Visuals</span>
-            </button>
-          )}
-        </div>
-
-        {/* Bottom nav */}
-        <div className="bottom-navigation">
-          <button className="nav-item active"><Home size={20} /><span>Home</span></button>
-          <button className="nav-item"><GraduationCap size={20} /><span>Courses</span></button>
-          <button className="nav-item"><TrendingUp size={20} /><span>Progress</span></button>
-          <button className="nav-item"><FileText size={20} /><span>Resources</span></button>
-          <button className="nav-item"><Settings size={20} /><span>Settings</span></button>
-        </div>
+            {/* Bottom nav */}
+            <div className="bottom-navigation">
+              <button className="nav-item active"><Home size={20} /><span>Home</span></button>
+              <button className="nav-item"><GraduationCap size={20} /><span>Courses</span></button>
+              <button className="nav-item"><TrendingUp size={20} /><span>Progress</span></button>
+              <button className="nav-item"><FileText size={20} /><span>Resources</span></button>
+              <button className="nav-item"><Settings size={20} /><span>Settings</span></button>
+            </div>
+          </div>
       </main>
 
       <style jsx>{`
