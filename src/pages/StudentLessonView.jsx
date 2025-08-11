@@ -65,11 +65,6 @@ const StudentLessonView = () => {
   const connectionTimeoutRef = useRef(null);
 
   
-  
-
-  const maxConnectionAttempts = 3;
-  const isConnectingRef = useRef(false);
-  const connectionTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Visual content rendering functions
