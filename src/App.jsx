@@ -14,7 +14,7 @@ function App() {
     
       <Routes>
         <Route path="/" element={<StudentLessonPage />} />
-        <Route path="/admin" element={<AdminUploadPage />} />
+        <Route path="/admin/upload" element={<AdminUploadPage />} />
         <Route path="/student-lesson-view" element={<StudentLessonView />} />
         
       </Routes>
