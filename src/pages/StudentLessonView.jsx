@@ -38,7 +38,6 @@ export default function StudentLessonView() {
   const [visualHistory,setVisualHistory] = useState([]);
   const [panelVisible,setPanelVisible]   = useState(true);
   const [panelSize,setPanelSize]         = useState('normal');
-  const [audioStream,setAudioStream]     = useState(null);
 
   /* ---------- rendering helpers (unchanged) ---------- */
   const renderEquation = ({ title, latex, explanation }) => {
@@ -59,7 +58,13 @@ export default function StudentLessonView() {
       <h4>{content.title}</h4>
       <img src={content.imageUrl} alt={content.title} />
       {content.explanation && <p className="equation-explanation">{content.explanation}</p>}
-      {content.steps && <ol>{content.steps.map((s,i)=><li key={i}>{s.description||s}</li>)}</ol>}
+      {content.steps && (
+        <ol>
+          {content.steps.map((s,i)=>(
+            <li key={i}>{s.description || s}</li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 
@@ -288,7 +293,7 @@ export default function StudentLessonView() {
 
   /* ---------- voice toggle ---------- */
   const toggleVoiceAgent = async () => {
-    if (conversation.status === 'connected') { conversation.endSession(); return; }
+    if (conversation.status === 'connected') { await conversation.endSession(); return; }
     if (isConnecting || connAtt >= maxConn) return;
     isConnectingRef.current = true;
     setIsConnecting(true);
@@ -323,10 +328,8 @@ export default function StudentLessonView() {
   return (
     <>
       <header className="dashboard-header">
-        <div className="header-content">
-          <BookOpen size={24}/>
-          <h1>AI Learning Assistant</h1>
-        </div>
+        <BookOpen size={24}/>
+        <h1>AI Learning Assistant</h1>
       </header>
 
       <main className="container-lessons-page">
