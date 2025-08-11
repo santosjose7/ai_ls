@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import StudentLessonView from './pages/StudentLessonView';
 import StudentLessonView1 from './pages/1';
 import StudentSetup from './pages/Setup'
-import StudentUploadPage from './components/StudentUploadPage';
+import StudentUploadPage from './pages/StudentUploadPage';
 //import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
