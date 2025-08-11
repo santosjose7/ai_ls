@@ -431,4 +431,3 @@ export default function StudentLessonView() {
   );
 }
 
-export default StudentLessonView;
