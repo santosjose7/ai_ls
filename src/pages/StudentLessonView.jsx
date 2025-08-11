@@ -8,7 +8,7 @@ mermaid.initialize({ startOnLoad: false });
 import RenderDiagram   from './RenderDiagram';
 import RenderShapes    from './RenderShapes';
 import AvatarContainer from './AvatarContainer';
-import StudentSetup    from './StudentSetup';
+import StudentSetup    from './Setup';
 
 import {
   BookOpen, X, Loader, CheckCircle2, RefreshCw, Home, GraduationCap,
