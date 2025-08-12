@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-//import { supabase } from '../supabaseClient';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader, CheckCircle2, User, BookOpen, Tag } from 'lucide-react';
 import '../styles/StudentLessonView.css';
