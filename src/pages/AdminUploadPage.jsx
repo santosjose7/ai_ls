@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+//import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader, CheckCircle2, User, BookOpen, Tag } from 'lucide-react';
 import '../styles/StudentLessonView.css';
@@ -45,7 +45,7 @@ const handleFileUpload = async (e) => {
       .from('lessons')
       .getPublicUrl(fileName);
 
-    // Process PDF content via your backend
+    // Process PDF content via backend
     const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/pdf/process-pdf-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,7 +84,7 @@ const handleFileUpload = async (e) => {
       title: title.trim(),
       description: description.trim(),
       category: category.trim(),
-      pdf_url: pdfUrl, // the URL
+      pdf_url: pdfUrl, // the pdf URL
       filename: uploadedFile.name,
     });
 
