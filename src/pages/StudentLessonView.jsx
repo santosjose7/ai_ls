@@ -331,63 +331,42 @@ const clientTools = useMemo(() => ({
     };
   },
 
-  getSessionContext: async () => {
-    console.log('Agent requested session context');
-    return {
-      student_name: studentName || "Student",
-      has_pdf: !!uploadedFile,
-      pdf_name: uploadedFile?.name || null,
-      pdf_processed: !!pdfContent,
-      session_active: isSessionActive,
-      visual_panel_visible: isVisualPanelVisible,
-      current_visual: visualContent?.type || null,
-      message: `Session context: Student=${studentName || "Student"}, PDF=${uploadedFile?.name || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
-    };
-  },
+  /* ---------- session-context ---------- */
+getSessionContext: async () => ({
+  student_name: studentName || "Student",
+  has_pdf: !!lesson,
+  pdf_name: lesson?.filename || null,
+  pdf_processed: !!pdfContent,
+  session_active: isSessionActive,
+  visual_panel_visible: isVisualPanelVisible,
+  current_visual: visualContent?.type || null,
+  message: `Session context: Student=${studentName || "Student"}, PDF=${lesson?.filename || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
+}),
 
-  getPdfContent: async () => {
-    console.log('Agent requested PDF content');
-    if (!pdfContent) {
-      return {
-        has_content: false,
-        content: null,
-        message: "No PDF content available. Please upload and process a PDF first."
-      };
-    }
-    
-    return {
-      has_content: true,
-      content: pdfContent,
-      pdf_name: uploadedFile?.name || "Unknown PDF",
-      content_length: pdfContent.length,
-      message: `PDF content retrieved: ${uploadedFile?.name || "Unknown PDF"} (${pdfContent.length} characters)`
-    };
-  },
+/* ---------- full-content ---------- */
+getPdfContent: async () => ({
+  has_content: !!pdfContent,
+  content: pdfContent,
+  pdf_name: lesson?.filename || "Unknown PDF",
+  content_length: pdfContent.length,
+  message: `PDF content retrieved (${pdfContent.length} chars)`
+}),
 
-  getPdfSummary: async ({ max_length = 500 }) => {
-    console.log('Agent requested PDF summary, max length:', max_length);
-    if (!pdfContent) {
-      return {
-        has_content: false,
-        summary: null,
-        message: "No PDF content available for summary."
-      };
-    }
-
-    const summary = pdfContent.length > max_length 
-      ? pdfContent.substring(0, max_length) + "..."
-      : pdfContent;
-
-    return {
-      has_content: true,
-      summary: summary,
-      full_length: pdfContent.length,
-      summary_length: summary.length,
-      is_truncated: pdfContent.length > max_length,
-      pdf_name: uploadedFile?.name || "Unknown PDF",
-      message: `PDF summary generated from ${uploadedFile?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
-    };
-  },
+/* ---------- summary ---------- */
+getPdfSummary: async ({ max_length = 500 }) => {
+  if (!pdfContent) return { has_content: false, summary: null };
+  const summary = pdfContent.length > max_length
+    ? pdfContent.substring(0, max_length) + "..."
+    : pdfContent;
+  return {
+    has_content: true,
+    summary,
+    full_length: pdfContent.length,
+    summary_length: summary.length,
+    is_truncated: pdfContent.length > max_length,
+    pdf_name: lesson?.filename || "Unknown PDF"
+  };
+},
 
   displayEquation: async ({ title, latex }) => {
     try {
@@ -936,7 +915,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
       message: `Notification shown: ${message}`
     };
   }
-}), [studentName, uploadedFile, pdfContent, isSessionActive, isVisualPanelVisible, visualContent, visualLayout, visualPanelSize, visualHistory]);
+}), [studentName, lesson, pdfContent, isSessionActive, isVisualPanelVisible, visualContent, visualLayout, visualPanelSize, visualHistory]);
 
   const validateAgentId = (id) => {
     if (!id || typeof id !== 'string') return false;
@@ -1082,7 +1061,7 @@ const getMicrophoneAccess = async () => {
 
     if (isConnecting || isConnectingRef.current) return;
     if (!studentName.trim()) return alert('Please enter your name.');
-    if (!uploadedFile || !pdfContent) return alert('Please upload a PDF first.');
+    if (!lesson?.filename || !pdfContent) return alert('Please upload a PDF first.');
     if (!agentId) return alert('Voice agent not configured.');
 
     if (connectionAttempts >= maxConnectionAttempts) {
@@ -1212,7 +1191,7 @@ const getMicrophoneAccess = async () => {
               </div>
               <div className="info-item">
                 <FileText size={16} />
-                <span>{uploadedFile?.name}</span>
+                <span>{lesson?.filename}</span>
               </div>
             </div>
             
@@ -1254,7 +1233,7 @@ const getMicrophoneAccess = async () => {
 
                 <button
                   onClick={toggleVoiceAgent}
-                  disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
+                  disabled={isConnecting || !studentName.trim() || !lesson?.filename || !pdfContent || !agentId}
                   className={`voice-agent-center-btn ${
                     conversation.status === 'connected' || isSessionActive
                       ? 'connected'
