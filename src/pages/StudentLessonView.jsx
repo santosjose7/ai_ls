@@ -1094,7 +1094,6 @@ const getMicrophoneAccess = async () => {
         body: JSON.stringify({
           agentId,
           studentName: studentName.trim(),
-          pdfContent,            // already set from fetched URL
           fileName: lesson?.filename || 'lesson.pdf',
         }),
       });
