@@ -34,13 +34,11 @@ const StudentLessonView = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const location = useLocation();
   
-  // Get data from upload page
-  const { studentName: initialName, uploadedFile: initialFile, pdfContent: initialPdfContent } = location.state || {};
+  const { studentName, lesson, pdfUrl } = location.state || {};
+  const [pdfContent, setPdfContent] = useState('');
+  const [loadingPdf, setLoadingPdf] = useState(false);
   
   // Local state
-  const [studentName] = useState(initialName || '');
-  const [uploadedFile] = useState(initialFile || null);
-  const [pdfContent] = useState(initialPdfContent || '');
   const [agentId, setAgentId] = useState(null);
   const [agentMessages, setAgentMessages] = useState([]);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -66,6 +64,27 @@ const StudentLessonView = () => {
 
   
   const fileInputRef = useRef(null);
+
+    // Fetch PDF content on mount
+  useEffect(() => {
+    if (!pdfUrl) return;
+    const loadPdf = async () => {
+      setLoadingPdf(true);
+      try {
+        const res = await fetch(pdfUrl);
+        const blob = await res.blob();
+        const text = await blob.text();
+        setPdfContent(text);
+      } catch (err) {
+        console.error(err);
+        setPdfContent(''); // fallback
+      } finally {
+        setLoadingPdf(false);
+      }
+    };
+    loadPdf();
+  }, [pdfUrl]);
+
 
   // Visual content rendering functions
 const renderEquation = (content) => {
