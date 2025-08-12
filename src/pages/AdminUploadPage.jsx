@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader, CheckCircle2, User, BookOpen, Tag } from 'lucide-react';
 import '../styles/StudentLessonView.css';
@@ -16,30 +17,52 @@ const AdminUploadPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || file.type !== 'application/pdf' || file.size > 10 * 1024 * 1024) {
-      alert('Please upload a valid PDF (< 10MB).');
-      return;
-    }
+const handleFileUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || file.type !== 'application/pdf') {
+    alert('Please upload a valid PDF.');
+    return;
+  }
 
-    setUploadedFile(file);
-    setIsProcessing(true);
-    try {
-      const form = new FormData();
-      form.append('pdf', file);
-      const resp = await fetch(`${API_BASE}/api/voice/process-pdf`, { method: 'POST', body: form });
-      if (!resp.ok) throw new Error('PDF processing failed');
-      const json = await resp.json();
-      setPdfContent(json.content);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to process PDF.');
-      setUploadedFile(null);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  setUploadedFile(file);
+  setIsProcessing(true);
+
+  try {
+    const fileName = `${Date.now()}_${file.name}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('lessons')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('lessons')
+      .getPublicUrl(fileName);
+
+    // Process PDF content via your backend
+    const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/pdf/process-pdf-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: publicUrl }),
+    });
+
+    const json = await response.json();
+    setPdfContent(json.content);
+
+  } catch (err) {
+    console.error(err);
+    alert('Failed to upload or process PDF.');
+    setUploadedFile(null);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const removeFile = () => {
     setUploadedFile(null);
@@ -48,43 +71,35 @@ const AdminUploadPage = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !category.trim() || !uploadedFile || !pdfContent) {
-      alert('Please fill in all required fields and upload a PDF.');
-      return;
-    }
+  e.preventDefault();
 
-    setIsUploading(true);
-    try {
-      const lessonData = {
-        title: title.trim(),
-        description: description.trim(),
-        category: category.trim(),
-        content: pdfContent,
-        content_length: pdfContent.length,
-        filename: uploadedFile.name
-      };
+  if (!title.trim() || !category.trim() || !uploadedFile || !pdfUrl) {
+    alert('Please complete all fields and upload a PDF.');
+    return;
+  }
 
-      const response = await fetch(`${API_BASE}/api/lessons`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(lessonData),
-      });
+  setIsUploading(true);
+  try {
+    const { error } = await supabase.from('lessons').insert({
+      title: title.trim(),
+      description: description.trim(),
+      category: category.trim(),
+      pdf_url: pdfUrl, // the URL
+      filename: uploadedFile.name,
+    });
 
-      if (!response.ok) throw new Error('Failed to upload lesson');
+    if (error) throw error;
 
-      alert('Lesson uploaded successfully!');
-      navigate('/');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to upload lesson. Please try again.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    alert('Lesson uploaded successfully!');
+    navigate('/');
+  } catch (err) {
+    console.error(err);
+    alert('Failed to upload lesson.');
+  } finally {
+    setIsUploading(false);
+  }
+};
+
 
   return (
     <>

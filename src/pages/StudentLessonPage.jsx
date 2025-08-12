@@ -6,7 +6,7 @@ import '../styles/StudentLessonView.css';
 const StudentLessonPage = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const navigate = useNavigate();
-  
+
   const [studentName, setStudentName] = useState('');
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,46 +16,56 @@ const StudentLessonPage = () => {
     fetchLessons();
   }, []);
 
+  //Fetch lessons from backend
   const fetchLessons = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/lessons`);
-      if (!response.ok) throw new Error('Failed to fetch lessons');
-      
-      const data = await response.json();
+      const res = await fetch(`${API_BASE}/api/lessons`);
+      if (!res.ok) throw new Error('Failed to fetch lessons');
+      const data = await res.json();
       setLessons(data);
     } catch (err) {
+      console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLessonClick = (lesson) => {
+  //On card click: fetch PDF from URL and navigate
+  const handleLessonClick = async (lesson) => {
     if (!studentName.trim()) {
       alert('Please enter your name first.');
       return;
     }
-    
-    navigate('/student-lesson-view', { 
-      state: { 
-        studentName: studentName.trim(),
-        lesson: lesson,
-        pdfContent: lesson.content
-      } 
-    });
+
+    try {
+      const res = await fetch(lesson.pdf_url);
+      const blob = await res.blob();
+      const text = await blob.text();
+
+      navigate('/student-lesson-view', {
+        state: {
+          studentName: studentName.trim(),
+          lesson,
+          pdfContent: text,
+        },
+      });
+    } catch (err) {
+      alert('Failed to load lesson content.');
+      console.error(err);
+    }
   };
 
   const handleAdminUpload = () => {
     navigate('/admin/upload');
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
     });
-  };
 
   return (
     <>
@@ -76,7 +86,7 @@ const StudentLessonPage = () => {
 
       <main className="container-lessons-page">
         <div className="lessons-page-container">
-          {/* Student Name Input */}
+          {/* Name input */}
           <div className="student-input-section">
             <div className="input-group">
               <User size={20} className="input-icon" />
@@ -91,7 +101,7 @@ const StudentLessonPage = () => {
             </div>
           </div>
 
-          {/* Loading State */}
+          {/* Loading */}
           {loading && (
             <div className="loading-container">
               <div className="loader"></div>
@@ -99,7 +109,7 @@ const StudentLessonPage = () => {
             </div>
           )}
 
-          {/* Error State */}
+          {/* Error */}
           {error && (
             <div className="error-container">
               <p>Error loading lessons: {error}</p>
@@ -115,8 +125,8 @@ const StudentLessonPage = () => {
               <h2>Available Lessons ({lessons.length})</h2>
               <div className="lessons-cards">
                 {lessons.map((lesson) => (
-                  <div 
-                    key={lesson.id} 
+                  <div
+                    key={lesson.id}
                     className="lesson-card"
                     onClick={() => handleLessonClick(lesson)}
                   >
@@ -126,26 +136,23 @@ const StudentLessonPage = () => {
                       </div>
                       <span className="lesson-category">{lesson.category || 'General'}</span>
                     </div>
-                    
+
                     <h3 className="lesson-title">{lesson.title}</h3>
-                    
                     <p className="lesson-description">
-                      {lesson.description || lesson.content.substring(0, 100) + '...'}
+                      {lesson.description || 'No description available'}
                     </p>
-                    
+
                     <div className="lesson-meta">
                       <div className="meta-item">
                         <Clock size={16} />
                         <span>{formatDate(lesson.created_at)}</span>
                       </div>
                       <div className="meta-item">
-                        <span>{lesson.content_length || lesson.content.length} chars</span>
+                        <span>{lesson.filename}</span>
                       </div>
                     </div>
-                    
-                    <button className="lesson-start-btn">
-                      Start Learning
-                    </button>
+
+                    <button className="lesson-start-btn">Start Learning</button>
                   </div>
                 ))}
               </div>
