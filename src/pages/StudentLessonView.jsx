@@ -1093,8 +1093,7 @@ const getMicrophoneAccess = async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentId,
-          studentName: studentName.trim(),
-          pdfContent,           
+          studentName: studentName.trim(),          
           fileName: lesson?.filename || 'lesson.pdf',
         }),
       });
