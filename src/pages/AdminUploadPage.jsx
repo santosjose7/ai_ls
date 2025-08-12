@@ -13,6 +13,7 @@ const AdminUploadPage = () => {
   const [category, setCategory] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
+  const [pdfUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
