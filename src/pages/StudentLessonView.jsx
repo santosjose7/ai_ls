@@ -335,13 +335,13 @@ const clientTools = useMemo(() => ({
     console.log('Agent requested session context');
     return {
       student_name: studentName || "Student",
-      has_pdf: !!pdfUrl,
-      pdf_name: pdfUrl?.name || null,
+      has_pdf: !!uploadedFile,
+      pdf_name: uploadedFile?.name || null,
       pdf_processed: !!pdfContent,
       session_active: isSessionActive,
       visual_panel_visible: isVisualPanelVisible,
       current_visual: visualContent?.type || null,
-      message: `Session context: Student=${studentName || "Student"}, PDF=${pdfUrl?.name || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
+      message: `Session context: Student=${studentName || "Student"}, PDF=${uploadedFile?.name || 'none'}, Processed=${!!pdfContent}, Visual=${visualContent?.type || 'none'}`
     };
   },
 
@@ -358,9 +358,9 @@ const clientTools = useMemo(() => ({
     return {
       has_content: true,
       content: pdfContent,
-      pdf_name: pdfUrl?.name || "Unknown PDF",
+      pdf_name: uploadedFile?.name || "Unknown PDF",
       content_length: pdfContent.length,
-      message: `PDF content retrieved: ${pdfUrl?.name || "Unknown PDF"} (${pdfContent.length} characters)`
+      message: `PDF content retrieved: ${uploadedFile?.name || "Unknown PDF"} (${pdfContent.length} characters)`
     };
   },
 
@@ -384,8 +384,8 @@ const clientTools = useMemo(() => ({
       full_length: pdfContent.length,
       summary_length: summary.length,
       is_truncated: pdfContent.length > max_length,
-      pdf_name: pdfUrl?.name || "Unknown PDF",
-      message: `PDF summary generated from ${pdfUrl?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
+      pdf_name: uploadedFile?.name || "Unknown PDF",
+      message: `PDF summary generated from ${uploadedFile?.name || "Unknown PDF"} (${summary.length} of ${pdfContent.length} characters)`
     };
   },
 
@@ -936,7 +936,7 @@ displayShapes: async ({ title, width = 700, height = 500, shapes }) => {
       message: `Notification shown: ${message}`
     };
   }
-}), [studentName, pdfUrl, pdfContent, isSessionActive, isVisualPanelVisible, visualContent, visualLayout, visualPanelSize, visualHistory]);
+}), [studentName, uploadedFile, pdfContent, isSessionActive, isVisualPanelVisible, visualContent, visualLayout, visualPanelSize, visualHistory]);
 
   const validateAgentId = (id) => {
     if (!id || typeof id !== 'string') return false;
@@ -1082,7 +1082,7 @@ const getMicrophoneAccess = async () => {
 
     if (isConnecting || isConnectingRef.current) return;
     if (!studentName.trim()) return alert('Please enter your name.');
-    if (!pdfUrl || !pdfContent) return alert('Please upload a PDF first.');
+    if (!uploadedFile || !pdfContent) return alert('Please upload a PDF first.');
     if (!agentId) return alert('Voice agent not configured.');
 
     if (connectionAttempts >= maxConnectionAttempts) {
@@ -1115,8 +1115,8 @@ const getMicrophoneAccess = async () => {
         body: JSON.stringify({
           agentId,
           studentName: studentName.trim(),
-          pdfContent,
-          fileName: pdfUrl.name,
+          pdfContent,            // already set from fetched URL
+          fileName: lesson?.filename || 'lesson.pdf',
         }),
       });
       if (!resp.ok) throw new Error(`Server responded ${resp.status}`);
@@ -1212,7 +1212,7 @@ const getMicrophoneAccess = async () => {
               </div>
               <div className="info-item">
                 <FileText size={16} />
-                <span>{pdfUrl?.name}</span>
+                <span>{uploadedFile?.name}</span>
               </div>
             </div>
             
@@ -1254,7 +1254,7 @@ const getMicrophoneAccess = async () => {
 
                 <button
                   onClick={toggleVoiceAgent}
-                  disabled={isConnecting || !studentName.trim() || !pdfUrl || !pdfContent || !agentId}
+                  disabled={isConnecting || !studentName.trim() || !uploadedFile || !pdfContent || !agentId}
                   className={`voice-agent-center-btn ${
                     conversation.status === 'connected' || isSessionActive
                       ? 'connected'
