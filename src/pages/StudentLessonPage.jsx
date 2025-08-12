@@ -32,28 +32,19 @@ const StudentLessonPage = () => {
   };
 
   //On card click: fetch PDF from URL and navigate
-  const handleLessonClick = async (lesson) => {
+  const handleLessonClick = (lesson) => {
     if (!studentName.trim()) {
       alert('Please enter your name first.');
       return;
     }
-
-    try {
-      const res = await fetch(lesson.pdf_url);
-      const blob = await res.blob();
-      const text = await blob.text();
-
-      navigate('/student-lesson-view', {
-        state: {
-          studentName: studentName.trim(),
-          lesson,
-          pdfContent: text,
-        },
-      });
-    } catch (err) {
-      alert('Failed to load lesson content.');
-      console.error(err);
-    }
+    console.log('[NAVIGATE] sending lesson:', lesson);
+    navigate('/student-lesson-view', {
+      state: {
+        studentName: studentName.trim(),
+        lesson,
+        pdfUrl: lesson.pdf_url,   // ← only the public URL
+      },
+    });
   };
 
   const handleAdminUpload = () => {
