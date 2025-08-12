@@ -7,99 +7,119 @@ import '../styles/StudentLessonView.css';
 const AdminUploadPage = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const navigate = useNavigate();
-  
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pdfContent, setPdfContent] = useState('');
-  const [pdfUrl] = useState('');
+  const [pdfUrl, setPdfUrl] = useState(''); // ✅ added so we can log it
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
-const handleFileUpload = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file || file.type !== 'application/pdf') {
-    alert('Please upload a valid PDF.');
-    return;
-  }
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    console.log('[UPLOAD] Selected file:', file);
 
-  setUploadedFile(file);
-  setIsProcessing(true);
+    if (!file || file.type !== 'application/pdf') {
+      alert('Please upload a valid PDF.');
+      return;
+    }
 
-  try {
-    const fileName = `${Date.now()}_${file.name}`;
+    setUploadedFile(file);
+    setIsProcessing(true);
 
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('lessons')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
+    try {
+      const fileName = `${Date.now()}_${file.name}`;
+      console.log('[UPLOAD] Uploading to Supabase:', fileName);
+
+      const { data, error } = await supabase.storage
+        .from('lessons')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (error) {
+        console.error('[UPLOAD] Supabase upload error:', error);
+        throw error;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('lessons')
+        .getPublicUrl(fileName);
+
+      console.log('[UPLOAD] Public URL:', publicUrl);
+      setPdfUrl(publicUrl);
+
+      console.log('[UPLOAD] Calling backend /api/pdf/process-pdf-url with:', publicUrl);
+      const response = await fetch(`${API_BASE}/api/pdf/process-pdf-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: publicUrl }),
       });
 
-    if (error) throw error;
+      if (!response.ok) {
+        console.error('[UPLOAD] Backend error:', response.status, response.statusText);
+        throw new Error(`Backend failed: ${response.status}`);
+      }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('lessons')
-      .getPublicUrl(fileName);
-
-    // Process PDF content via backend
-    const response = await fetch(`${import.meta.env.VITE_API_BASE}/api/pdf/process-pdf-url`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: publicUrl }),
-    });
-
-    const json = await response.json();
-    setPdfContent(json.content);
-
-  } catch (err) {
-    console.error(err);
-    alert('Failed to upload or process PDF.');
-    setUploadedFile(null);
-  } finally {
-    setIsProcessing(false);
-  }
-};
+      const json = await response.json();
+      console.log('[UPLOAD] Backend returned content length:', json.content?.length);
+      setPdfContent(json.content);
+    } catch (err) {
+      console.error('[UPLOAD] Catch block:', err);
+      alert('Failed to upload or process PDF.');
+      setUploadedFile(null);
+      setPdfUrl('');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const removeFile = () => {
+    console.log('[REMOVE] Clearing file and states');
     setUploadedFile(null);
     setPdfContent('');
+    setPdfUrl('');
     fileInputRef.current && (fileInputRef.current.value = '');
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
+    console.log('[SUBMIT] Form values:', { title, category, uploadedFile, pdfUrl });
 
-  if (!title.trim() || !category.trim() || !uploadedFile || !pdfUrl) {
-    alert('Please complete all fields and upload a PDF.');
-    return;
-  }
+    if (!title.trim() || !category.trim() || !uploadedFile || !pdfUrl) {
+      alert('Please complete all fields and upload a PDF.');
+      return;
+    }
 
-  setIsUploading(true);
-  try {
-    const { error } = await supabase.from('lessons').insert({
-      title: title.trim(),
-      description: description.trim(),
-      category: category.trim(),
-      pdf_url: pdfUrl, // the pdf URL
-      filename: uploadedFile.name,
-    });
+    setIsUploading(true);
+    try {
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim(),
+        pdf_url: pdfUrl,
+        filename: uploadedFile.name,
+      };
+      console.log('[SUBMIT] Inserting into Supabase:', payload);
 
-    if (error) throw error;
+      const { error } = await supabase.from('lessons').insert(payload);
 
-    alert('Lesson uploaded successfully!');
-    navigate('/');
-  } catch (err) {
-    console.error(err);
-    alert('Failed to upload lesson.');
-  } finally {
-    setIsUploading(false);
-  }
-};
+      if (error) {
+        console.error('[SUBMIT] Supabase insert error:', error);
+        throw error;
+      }
+
+      console.log('[SUBMIT] Insert OK');
+      alert('Lesson uploaded successfully!');
+      navigate('/');
+    } catch (err) {
+      console.error('[SUBMIT] Catch block:', err);
+      alert('Failed to upload lesson.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
 
   return (
