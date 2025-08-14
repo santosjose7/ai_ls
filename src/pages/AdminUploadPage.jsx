@@ -12,7 +12,7 @@ const AdminUploadPage = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [pdfContent, setPdfContent] = useState('');
+  const [pdfContent, setPdfContent] = useState('')
   const [pdfUrl, setPdfUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -51,7 +51,7 @@ const AdminUploadPage = () => {
       setPdfUrl(publicUrl);
 
       console.log('[UPLOAD] Calling backend /api/pdf/upload-pdf-url with:', publicUrl);
-      const response = await fetch(`${API_BASE}/api/pdf/process-pdf-url`, {
+      const response = await fetch(`${API_BASE}/api/pdf/upload-pdf-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: publicUrl }),
