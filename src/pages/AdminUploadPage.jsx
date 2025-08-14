@@ -50,7 +50,7 @@ const AdminUploadPage = () => {
       console.log('[UPLOAD] Public URL:', publicUrl);
       setPdfUrl(publicUrl);
 
-      console.log('[UPLOAD] Calling backend /api/pdf/process-pdf-url with:', publicUrl);
+      console.log('[UPLOAD] Calling backend /api/pdf/upload-pdf-url with:', publicUrl);
       const response = await fetch(`${API_BASE}/api/pdf/process-pdf-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
