@@ -68,22 +68,29 @@ const StudentLessonView = () => {
     // Fetch PDF content on mount
   useEffect(() => {
     if (!pdfUrl) return;
+
     const loadPdf = async () => {
       setLoadingPdf(true);
       try {
-        const res = await fetch(pdfUrl);
-        const blob = await res.blob();
-        const text = await blob.text();
-        setPdfContent(text);
-        console.log('pdf:', pdfContent);
-        
+        const res = await fetch(`${API_BASE}/api/pdf/process-pdf-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: pdfUrl })
+        });
+
+        if (!res.ok) throw new Error('Failed to parse PDF');
+        const { pdf_content } = await res.json();
+
+        setPdfContent(pdf_content);
+        console.log('pdf:', pdf_content);
       } catch (err) {
         console.error(err);
-        setPdfContent(''); // fallback
+        setPdfContent('');
       } finally {
         setLoadingPdf(false);
       }
     };
+
     loadPdf();
   }, [pdfUrl]);
 
