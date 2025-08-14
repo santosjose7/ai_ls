@@ -74,8 +74,9 @@ const StudentLessonView = () => {
         const res = await fetch(pdfUrl);
         const blob = await res.blob();
         const text = await blob.text();
+        console.log('pdf content:', text);
         setPdfContent(text);
-        console.log('pdf content:', pdfContent);
+        
       } catch (err) {
         console.error(err);
         setPdfContent(''); // fallback
