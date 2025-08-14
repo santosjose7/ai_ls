@@ -75,6 +75,7 @@ const StudentLessonView = () => {
         const blob = await res.blob();
         const text = await blob.text();
         setPdfContent(text);
+        console.log('pdf content:', pdfContent);
       } catch (err) {
         console.error(err);
         setPdfContent(''); // fallback
