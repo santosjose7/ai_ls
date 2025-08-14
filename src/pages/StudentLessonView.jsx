@@ -377,7 +377,7 @@ getPdfSummary: async ({ max_length = 500 }) => {
   };
 },
 
-  displayEquation: async ({ title, latex }) => {
+displayEquation: async ({ title, latex }) => {
     try {
       console.log('🎯 Agent calling displayEquation with text:', latex);
       
