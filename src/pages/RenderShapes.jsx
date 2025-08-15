@@ -14,7 +14,7 @@ const konvaComponents = {
   Image: Konva.Image,
   Label: Konva.Label,
   Tag: Konva.Tag,
-  // Add more as needed
+  Arc: Konva.Arc,
 };
 
 const RenderShapes = ({ content }) => {

@@ -1,7 +1,7 @@
 // App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-//import LoginRegister from './pages/LoginRegister';
+import LoginRegisterPage from './pages/LoginRegisterPage';
 //import AdminDashboard from './pages/AdminDashboard';
 import StudentLessonView from './pages/StudentLessonView';
 import StudentLessonView1 from './pages/1';
@@ -13,7 +13,8 @@ function App() {
   return (
     
       <Routes>
-        <Route path="/" element={<StudentLessonPage />} />
+        <Route path="/" element={<LoginRegisterPage />} />
+        <Route path="/student" element={<StudentLessonView />} />
         <Route path="/1" element={<StudentLessonView1 />} />
         <Route path="/admin/upload" element={<AdminUploadPage />} />
         <Route path="/student-lesson-view" element={<StudentLessonView />} />

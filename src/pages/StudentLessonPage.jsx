@@ -1,25 +1,96 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, User, PlusCircle, Upload } from 'lucide-react';
+import { BookOpen, Clock, User, PlusCircle, Upload, LogOut } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 import '../styles/StudentLessonView.css';
+
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const StudentLessonPage = () => {
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const navigate = useNavigate();
 
-  const [studentName, setStudentName] = useState('');
+  const [user, setUser] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchLessons();
-  }, []);
+    checkAuthAndFetchLessons();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          localStorage.removeItem('user');
+          navigate('/auth');
+        } else if (session) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.user_metadata?.name || 'User'
+          };
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          fetchLessons();
+        }
+      }
+    );
 
-  //Fetch lessons from backend
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const checkAuthAndFetchLessons = async () => {
+    try {
+      const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+      
+      if (error || !supabaseUser) {
+        navigate('/auth');
+        return;
+      }
+
+      const userData = {
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        name: supabaseUser.user_metadata?.name || 'User'
+      };
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      fetchLessons();
+    } catch (err) {
+      console.error('Error checking auth:', err);
+      navigate('/auth');
+    }
+  };
+
+  // Fetch lessons from backend with Supabase authentication
   const fetchLessons = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/lessons`);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/api/lessons`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (res.status === 401) {
+        // Token expired or invalid
+        handleLogout();
+        return;
+      }
+      
       if (!res.ok) throw new Error('Failed to fetch lessons');
       const data = await res.json();
       setLessons(data);
@@ -31,32 +102,56 @@ const StudentLessonPage = () => {
     }
   };
 
-  //On card click: fetch PDF from URL and navigate
+  // Handle lesson click
   const handleLessonClick = (lesson) => {
-    if (!studentName.trim()) {
-      alert('Please enter your name first.');
-      return;
-    }
     console.log('[NAVIGATE] sending lesson:', lesson);
     navigate('/student-lesson-view', {
       state: {
-        studentName: studentName.trim(),
+        studentName: user.name,
         lesson,
-        pdfUrl: lesson.pdf_url,   // ← only the public URL
+        pdfUrl: lesson.pdf_url,
+        userId: user.id,
+        token: user.token
       },
     });
   };
 
+  // Handle admin upload navigation
   const handleAdminUpload = () => {
     navigate('/admin/upload');
   };
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('user');
+      navigate('/auth');
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Force logout even if there's an error
+      localStorage.removeUser('user');
+      navigate('/auth');
+    }
+  };
+
+  // Format date
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
+
+  // Show loading while checking authentication
+  if (!user && loading) {
+    return (
+      <div className="auth-loading">
+        <div className="loader"></div>
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -68,30 +163,30 @@ const StudentLessonPage = () => {
             </div>
             <h2>AI Learning Library</h2>
           </div>
-          <button onClick={handleAdminUpload} className="admin-upload-btn">
-            <Upload size={20} />
-            <span>Upload New Lesson</span>
-          </button>
+          
+          <div className="header-right">
+            {/* User info */}
+            <div className="user-info">
+              <User size={20} />
+              <span>Welcome, {user?.name}</span>
+            </div>
+            
+            {/* Admin upload button */}
+            <button onClick={handleAdminUpload} className="admin-upload-btn">
+              <Upload size={20} />
+              <span>Upload New Lesson</span>
+            </button>
+            
+            {/* Logout button */}
+            <button onClick={handleLogout} className="logout-btn">
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="container-lessons-page">
         <div className="lessons-page-container">
-          {/* Name input */}
-          <div className="student-input-section">
-            <div className="input-group">
-              <User size={20} className="input-icon" />
-              <input
-                type="text"
-                placeholder="Enter your name to start learning"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                maxLength={50}
-                className="student-name-input"
-              />
-            </div>
-          </div>
-
           {/* Loading */}
           {loading && (
             <div className="loading-container">
@@ -104,7 +199,7 @@ const StudentLessonPage = () => {
           {error && (
             <div className="error-container">
               <p>Error loading lessons: {error}</p>
-              <button onClick={fetchLessons} className="retry-btn">
+              <button onClick={() => fetchLessons()} className="retry-btn">
                 Try Again
               </button>
             </div>
@@ -166,6 +261,15 @@ const StudentLessonPage = () => {
       </main>
 
       <style jsx>{`
+        .auth-loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          background: #f8f9fa;
+        }
+
         .dashboard-header {
           display: flex;
           justify-content: space-between;
@@ -173,6 +277,41 @@ const StudentLessonPage = () => {
           padding: 20px 40px;
           background: white;
           border-bottom: 1px solid #e9ecef;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+
+        .header-left-inner {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .header-icon {
+          color: #007bff;
+          background: #f0f8ff;
+          padding: 8px;
+          border-radius: 8px;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #666;
+          font-weight: 500;
         }
 
         .admin-upload-btn {
@@ -196,20 +335,28 @@ const StudentLessonPage = () => {
           box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
         }
 
+        .logout-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #dc3545;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 10px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+          background: #c82333;
+          transform: translateY(-1px);
+        }
+
         .lessons-page-container {
           max-width: 1200px;
           margin: 0 auto;
           padding: 40px 20px;
-        }
-
-        .student-input-section {
-          margin-bottom: 40px;
-          text-align: center;
-        }
-
-        .student-input-section .input-group {
-          max-width: 400px;
-          margin: 0 auto;
         }
 
         .loading-container,
@@ -244,6 +391,10 @@ const StudentLessonPage = () => {
           font-size: 16px;
           cursor: pointer;
           transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0 auto;
         }
 
         .retry-btn:hover,
@@ -358,6 +509,22 @@ const StudentLessonPage = () => {
           
           .lessons-page-container {
             padding: 20px;
+          }
+
+          .dashboard-header {
+            padding: 15px 20px;
+          }
+
+          .header-right {
+            gap: 8px;
+          }
+
+          .user-info span {
+            display: none;
+          }
+
+          .admin-upload-btn span {
+            display: none;
           }
         }
       `}</style>
